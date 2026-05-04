@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Strategy Tracker</title>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'DM Sans', system-ui, sans-serif; background: #F5F6FA; }
+    select, input, button { font-family: inherit; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel" data-presets="react">
+    const { useState, useEffect, useCallback } = React;
+
+    // ── localStorage persistence (works everywhere, shared via URL copy-paste) ──
+    function lsGet(key) { try { return JSON.parse(localStorage.getItem(key)); } catch(e) { return null; } }
+    function lsSet(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch(e) {} }
+
+    const DEFAULT_PEOPLE = ["Person 1","Person 2","Person 3","Person 4","Person 5","Person 6"];
+    const DEFAULT_PROJECTS = ["Project A","Project B","Project C","Project D","Project E","Project F","Project G","Project H","Project I","Project J"];
+    const STAGES = ["MSA & Advance","Brief Doc","Briefing Call","3C","Strategy Deck","Strategy Presentation","Handover to Content","Content Strategy","Refinement","Presentation"];
+
+    const SEED = [
+      {id:"s1",date:"23-Apr-25",name:"Person 1",project:"Project A",stage:"MSA & Advance",grade:5},
+      {id:"s2",date:"24-Apr-25",name:"Person 2",project:"Project B",stage:"MSA & Advance",grade:3},
+      {id:"s3",date:"24-Apr-25",name:"Person 3",project:"Project C",stage:"Brief Doc",grade:2},
+      {id:"s4",date:"25-Apr-25",name:"Person 1",project:"Project A",stage:"Brief Doc",grade:4},
+      {id:"s5",date:"25-Apr-25",name:"Person 2",project:"Project B",stage:"Briefing Call",grade:5},
+      {id:"s6",date:"26-Apr-25",name:"Person 3",project:"Project C",stage:"Brief Doc",grade:5},
+      {id:"s7",date:"26-Apr-25",name:"Person 1",project:"Project A",stage:"Briefing Call",grade:3},
+      {id:"s8",date:"27-Apr-25",name:"Person 2",project:"Project B",stage:"3C",grade:2},
+      {id:"s9",date:"27-Apr-25",name:"Person 3",project:"Project C",stage:"Briefing Call",grade:4},
+      {id:"s10",date:"29-Apr-25",name:"Person 1",project:"Project A",stage:"3C",grade:1},
+    ];
+
+    function fmtDate(d=new Date()){
+      return d.getDate()+"-"+["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getMonth()]+"-"+String(d.getFullYear()).slice(2);
+    }
+    function gradeColor(g){
+      if(g===5) return {bg:"#C0DD97",fg:"#27500A"};
+      if(g>=3)  return {bg:"#EAF3DE",fg:"#3B6D11"};
+      if(g>=1)  return {bg:"#FAEEDA",fg:"#854F0B"};
+      return {bg:"#FCEBEB",fg:"#A32D2D"};
+    }
+    function statusBadge(avg){
+      if(avg===null) return {label:"No data",bg:"#F1EFE8",fg:"#5F5E5A"};
+      if(avg>=4.8)   return {label:"Done",bg:"#C0DD97",fg:"#27500A"};
+      if(avg>=3)     return {label:"On Track",bg:"#EAF3DE",fg:"#3B6D11"};
+      if(avg>=1)     return {label:"In Progress",bg:"#FAEEDA",fg:"#854F0B"};
+      return {label:"Just Started",bg:"#FCEBEB",fg:"#A32D2D"};
+    }
+    function bwBadge(inProg){
+      if(inProg===0)  return {label:"Available",bg:"#E6F1FB",fg:"#185FA5"};
+      if(inProg<=2)   return {label:"Healthy",bg:"#EAF3DE",fg:"#3B6D11"};
+      if(inProg===3)  return {label:"At Capacity",bg:"#FAEEDA",fg:"#854F0B"};
+      return {label:"Overloaded",bg:"#FCEBEB",fg:"#A32D2D"};
+    }
+    function Badge({label,bg,fg}){
+      return React.createElement('span',{style:{background:bg,color:fg,padding:"3px 10px",borderRadius:20,fontSize:11,fontWeight:600,whiteSpace:"nowrap"}},label);
+    }
+    function GradePill({grade}){
+      const {bg,fg}=gradeColor(grade);
+      return React.createElement('span',{style:{display:"inline-flex",alignItems:"center",justifyContent:"center",width:26,height:26,borderRadius:"50%",background:bg,color:fg,fontWeight:700,fontSize:12}},grade);
+    }
+    function Avatar({name,people}){
+      const initials=name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
+      const cols=["#E6F1FB","#EAF3DE","#FAEEDA","#FCEBEB","#EEEDFE","#F1EFE8","#E1F5EE","#FBEAF0"];
+      const fgs=["#0C447C","#27500A","#633806","#791F1F","#3C3489","#444441","#085041","#72243E"];
+      const idx=Math.max(0,(people||DEFAULT_PEOPLE).indexOf(name))%cols.length;
+      return React.createElement('div',{style:{width:32,height:32,borderRadius:"50%",background:cols[idx],color:fgs[idx],display:"flex",alignItems:"center",justifyContent:"center",fontWeight:600,fontSize:12,flexShrink:0}},initials);
+    }
+    function ProgressBar({value}){
+      const pct=Math.round((value/5)*100);
+      const {bg}=gradeColor(Math.round(value));
+      return React.createElement('div',{style:{display:"flex",alignItems:"center",gap:8}},
+        React.createElement('div',{style:{flex:1,height:6,borderRadius:3,background:"#F1EFE8",overflow:"hidden"}},
+          React.createElement('div',{style:{height:"100%",width:pct+"%",background:bg,borderRadius:3,transition:"width 0.4s"}})
+        ),
+        React.createElement('span',{style:{fontSize:11,fontWeight:600,color:"#5F5E5A",minWidth:30,textAlign:"right"}},pct+"%")
+      );
+    }
+
+    function App(){
+      const [tab,setTab]=useState("log");
+      const [entries,setEntries]=useState(()=>lsGet("trk_entries")||SEED);
+      const [people,setPeople]=useState(()=>lsGet("trk_people")||DEFAULT_PEOPLE);
+      const [projects,setProjects]=useState(()=>lsGet("trk_projects")||DEFAULT_PROJECTS);
+      const [saved,setSaved]=useState(false);
+      const [settingsSaved,setSettingsSaved]=useState(false);
+      const [name,setName]=useState("");
+      const [project,setProject]=useState("");
+      const [stage,setStage]=useState("");
+      const [grade,setGrade]=useState(null);
+      const [filterPerson,setFilterPerson]=useState("All");
+      const [filterProject,setFilterProject]=useState("All");
+      const [editPeople,setEditPeople]=useState(()=>lsGet("trk_people")||DEFAULT_PEOPLE);
+      const [editProjects,setEditProjects]=useState(()=>lsGet("trk_projects")||DEFAULT_PROJECTS);
+      const [newPerson,setNewPerson]=useState("");
+      const [newProject,setNewProject]=useState("");
+
+      function submitLog(){
+        if(!name||!project||!stage||grade===null)return;
+        const entry={id:"e"+Date.now(),date:fmtDate(),name,project,stage,grade};
+        const next=[entry,...entries];
+        setEntries(next); lsSet("trk_entries",next);
+        setSaved(true); setTimeout(()=>setSaved(false),2000);
+        setName("");setProject("");setStage("");setGrade(null);
+      }
+      function saveSettings(){
+        const p=editPeople.filter(Boolean),pr=editProjects.filter(Boolean);
+        setPeople(p);setProjects(pr);
+        lsSet("trk_people",p);lsSet("trk_projects",pr);
+        setSettingsSaved(true);setTimeout(()=>setSettingsSaved(false),2000);
+      }
+      function addPerson(){const t=newPerson.trim();if(!t||editPeople.includes(t))return;setEditPeople(ep=>[...ep,t]);setNewPerson("");}
+      function addProject(){const t=newProject.trim();if(!t||editProjects.includes(t))return;setEditProjects(ep=>[...ep,t]);setNewProject("");}
+
+      const ready=name&&project&&stage&&grade!==null;
+      const filteredLog=entries.filter(e=>(filterPerson==="All"||e.name===filterPerson)&&(filterProject==="All"||e.project===filterProject));
+      const activeProjects=projects.filter(p=>entries.find(e=>e.project===p));
+      const noDataProjects=projects.filter(p=>!entries.find(e=>e.project===p));
+      const projectStats=activeProjects.map(p=>{
+        const pe=entries.filter(e=>e.project===p);
+        const avg=pe.reduce((a,e)=>a+e.grade,0)/pe.length;
+        return{project:p,avg,lastDate:pe[0].date,lastStage:pe[0].stage,lastGrade:pe[0].grade,team:[...new Set(pe.map(e=>e.name))]};
+      });
+      const peopleStats=people.map(p=>{
+        const pe=entries.filter(e=>e.name===p);
+        const total=pe.length,inProg=pe.filter(e=>e.grade>0&&e.grade<5).length,done=pe.filter(e=>e.grade===5).length;
+        const avg=total?pe.reduce((a,e)=>a+e.grade,0)/total:null;
+        return{name:p,total,inProg,done,avg,prjs:[...new Set(pe.map(e=>e.project))]};
+      });
+
+      const dd=(value,onChange,options,placeholder)=>React.createElement('select',{value,onChange:e=>onChange(e.target.value),style:{width:"100%",height:40,borderRadius:8,border:"1px solid #E2E5EF",padding:"0 12px",fontSize:13,color:value?"#1A1A2E":"#8A94A6",background:"#F5F6FA",outline:"none"}},
+        React.createElement('option',{value:""},placeholder||"Select..."),
+        ...options.map(o=>React.createElement('option',{key:o},o))
+      );
+      const lbl=(text)=>React.createElement('div',{style:{fontSize:11,fontWeight:600,color:"#8A94A6",textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:6}},text);
+      const card=(children,extra={})=>React.createElement('div',{style:{background:"#fff",borderRadius:12,border:"0.5px solid #E2E5EF",padding:20,marginBottom:16,...extra}},children);
+
+      return React.createElement('div',{style:{fontFamily:"'DM Sans',system-ui,sans-serif",color:"#1A1A2E",minHeight:"100vh",background:"#F5F6FA"}},
+
+        // Top bar
+        React.createElement('div',{style:{background:"#1B2A4A",padding:"0 20px",display:"flex",alignItems:"center",height:52,gap:10}},
+          React.createElement('div',{style:{width:8,height:8,borderRadius:"50%",background:"#C0DD97"}}),
+          React.createElement('span',{style:{fontSize:15,fontWeight:600,color:"#fff"}},"Strategy Tracker"),
+          React.createElement('span',{style:{fontSize:11,color:"rgba(255,255,255,0.35)"}},"team workspace"),
+          (saved||settingsSaved)&&React.createElement('span',{style:{marginLeft:"auto",fontSize:11,color:"#C0DD97",fontWeight:500}},"Saved")
+        ),
+
+        // Tabs
+        React.createElement('div',{style:{background:"#fff",borderBottom:"0.5px solid #E2E5EF",display:"flex",padding:"0 16px"}},
+          ...["log","projects","people","settings"].map((t,i)=>
+            React.createElement('button',{key:t,onClick:()=>setTab(t),style:{padding:"12px 16px",fontSize:13,fontWeight:500,cursor:"pointer",background:"none",border:"none",borderBottom:tab===t?"2px solid #0B6E6E":"2px solid transparent",color:tab===t?"#0B6E6E":"#8A94A6"}},
+              ["Log","Projects","People","Settings"][i]
+            )
+          )
+        ),
+
+        React.createElement('div',{style:{maxWidth:780,margin:"0 auto",padding:"20px 16px"}},
+
+          // Stats
+          React.createElement('div',{style:{display:"grid",gridTemplateColumns:"repeat(4,minmax(0,1fr))",gap:10,marginBottom:20}},
+            ...[["Total logs",entries.length],["People",people.length],["Projects",projects.length],["Stages done",entries.filter(e=>e.grade===5).length]].map(([l,v])=>
+              React.createElement('div',{key:l,style:{background:"#fff",borderRadius:10,border:"0.5px solid #E2E5EF",padding:"12px 14px"}},
+                React.createElement('div',{style:{fontSize:11,fontWeight:600,color:"#8A94A6",textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:4}},l),
+                React.createElement('div',{style:{fontSize:22,fontWeight:600,color:"#1B2A4A"}},v)
+              )
+            )
+          ),
+
+          // LOG TAB
+          tab==="log"&&React.createElement(React.Fragment,null,
+            card(React.createElement(React.Fragment,null,
+              React.createElement('div',{style:{fontSize:13,fontWeight:600,color:"#1B2A4A",marginBottom:16}},"Today's update"),
+              React.createElement('div',{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}},
+                React.createElement('div',null,lbl("Your name"),dd(name,setName,people,"Select...")),
+                React.createElement('div',null,lbl("Project"),dd(project,setProject,projects,"Select..."))
+              ),
+              React.createElement('div',{style:{marginBottom:14}},lbl("Stage"),dd(stage,setStage,STAGES,"Select...")),
+              React.createElement('div',{style:{marginBottom:16}},
+                lbl("Grade"),
+                React.createElement('div',{style:{display:"flex",gap:8}},
+                  ...[0,1,2,3,4,5].map(g=>{
+                    const sel=grade===g;const{bg,fg}=gradeColor(g);
+                    return React.createElement('button',{key:g,onClick:()=>setGrade(g),style:{width:42,height:42,borderRadius:8,border:sel?"2px solid "+fg:"1.5px solid #E2E5EF",background:sel?bg:"#F5F6FA",color:sel?fg:"#8A94A6",fontWeight:700,fontSize:14,cursor:"pointer",flexShrink:0}},g);
+                  })
+                ),
+                React.createElement('div',{style:{display:"flex",gap:6,marginTop:8,flexWrap:"wrap"}},
+                  ...["0=Not started","1=20%","2=40%","3=60%","4=80%","5=Done"].map(s=>
+                    React.createElement('span',{key:s,style:{fontSize:10,color:"#8A94A6",background:"#F5F6FA",borderRadius:4,padding:"2px 6px"}},s.replace("="," = "))
+                  )
+                )
+              ),
+              React.createElement('div',{style:{display:"flex",alignItems:"center",gap:12}},
+                React.createElement('button',{onClick:submitLog,disabled:!ready,style:{height:40,padding:"0 24px",borderRadius:8,border:"none",background:ready?"#1B2A4A":"#D3D1C7",color:"#fff",fontSize:13,fontWeight:600,cursor:ready?"pointer":"not-allowed"}},"Log it"),
+                saved&&React.createElement('span',{style:{fontSize:12,color:"#0B6E6E",fontWeight:500}},"Saved")
+              )
+            )),
+
+            card(React.createElement(React.Fragment,null,
+              React.createElement('div',{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,flexWrap:"wrap",gap:8}},
+                React.createElement('div',{style:{fontSize:13,fontWeight:600,color:"#1B2A4A"}},"Recent entries"),
+                React.createElement('div',{style:{display:"flex",gap:8}},
+                  React.createElement('select',{value:filterPerson,onChange:e=>setFilterPerson(e.target.value),style:{height:32,borderRadius:6,border:"0.5px solid #E2E5EF",padding:"0 8px",fontSize:12,background:"#F5F6FA",outline:"none",color:"#1A1A2E"}},
+                    React.createElement('option',null,"All"),...people.map(p=>React.createElement('option',{key:p},p))
+                  ),
+                  React.createElement('select',{value:filterProject,onChange:e=>setFilterProject(e.target.value),style:{height:32,borderRadius:6,border:"0.5px solid #E2E5EF",padding:"0 8px",fontSize:12,background:"#F5F6FA",outline:"none",color:"#1A1A2E"}},
+                    React.createElement('option',null,"All"),...projects.map(p=>React.createElement('option',{key:p},p))
+                  )
+                )
+              ),
+              filteredLog.length===0
+                ?React.createElement('div',{style:{textAlign:"center",padding:32,color:"#8A94A6",fontSize:13}},"No entries yet")
+                :React.createElement('div',{style:{overflowX:"auto"}},
+                  React.createElement('table',{style:{width:"100%",borderCollapse:"collapse",fontSize:12,tableLayout:"fixed"}},
+                    React.createElement('thead',null,React.createElement('tr',{style:{background:"#0B6E6E"}},
+                      ...["Date","Name","Project","Stage","Grade"].map((h,i)=>
+                        React.createElement('th',{key:h,style:{padding:"8px 10px",textAlign:h==="Grade"?"center":"left",color:"#fff",fontWeight:600,fontSize:11,width:[80,110,110,160,60][i]}},h)
+                      )
+                    )),
+                    React.createElement('tbody',null,
+                      ...filteredLog.slice(0,30).map((e,i)=>
+                        React.createElement('tr',{key:e.id,style:{background:i%2===0?"#F5F6FA":"#fff"}},
+                          React.createElement('td',{style:{padding:"9px 10px",borderBottom:"0.5px solid #E2E5EF",color:"#8A94A6",fontSize:11}},e.date),
+                          React.createElement('td',{style:{padding:"9px 10px",borderBottom:"0.5px solid #E2E5EF"}},
+                            React.createElement('div',{style:{display:"flex",alignItems:"center",gap:6}},React.createElement(Avatar,{name:e.name,people}),React.createElement('span',{style:{fontSize:12,fontWeight:500}},e.name))
+                          ),
+                          React.createElement('td',{style:{padding:"9px 10px",borderBottom:"0.5px solid #E2E5EF",fontWeight:500,fontSize:12}},e.project),
+                          React.createElement('td',{style:{padding:"9px 10px",borderBottom:"0.5px solid #E2E5EF",color:"#8A94A6",fontSize:11}},e.stage),
+                          React.createElement('td',{style:{padding:"9px 10px",borderBottom:"0.5px solid #E2E5EF",textAlign:"center"}},React.createElement(GradePill,{grade:e.grade}))
+                        )
+                      )
+                    )
+                  )
+                )
+            ))
+          ),
+
+          // PROJECTS TAB
+          tab==="projects"&&React.createElement(React.Fragment,null,
+            ...projectStats.map(p=>{
+              const st=statusBadge(p.avg);
+              return card(React.createElement(React.Fragment,null,
+                React.createElement('div',{style:{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:12,gap:8,flexWrap:"wrap"}},
+                  React.createElement('div',null,
+                    React.createElement('div',{style:{fontSize:14,fontWeight:600,color:"#1B2A4A"}},p.project),
+                    React.createElement('div',{style:{fontSize:11,color:"#8A94A6",marginTop:2}},"Last: "+p.lastDate+" · "+p.lastStage)
+                  ),
+                  React.createElement('div',{style:{display:"flex",alignItems:"center",gap:8}},React.createElement(GradePill,{grade:p.lastGrade}),React.createElement(Badge,st))
+                ),
+                React.createElement(ProgressBar,{value:p.avg}),
+                React.createElement('div',{style:{display:"flex",alignItems:"center",gap:6,marginTop:10,flexWrap:"wrap"}},
+                  React.createElement('span',{style:{fontSize:11,color:"#8A94A6"}},"Team:"),
+                  ...p.team.map(person=>React.createElement(Avatar,{key:person,name:person,people})),
+                  React.createElement('span',{style:{fontSize:11,color:"#8A94A6",marginLeft:4}},"Avg: ",React.createElement('strong',{style:{color:"#1B2A4A"}},p.avg.toFixed(1)))
+                )
+              ),{key:p.project});
+            }),
+            ...noDataProjects.map(p=>
+              React.createElement('div',{key:p,style:{background:"#fff",borderRadius:12,border:"0.5px solid #E2E5EF",padding:16,marginBottom:10,display:"flex",justifyContent:"space-between",alignItems:"center"}},
+                React.createElement('span',{style:{fontSize:14,fontWeight:600,color:"#1B2A4A"}},p),
+                React.createElement(Badge,{label:"No data yet",bg:"#F1EFE8",fg:"#5F5E5A"})
+              )
+            )
+          ),
+
+          // PEOPLE TAB
+          tab==="people"&&React.createElement(React.Fragment,null,
+            React.createElement('div',{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:10,marginBottom:16}},
+              ...peopleStats.map(p=>{
+                const bw=bwBadge(p.inProg);
+                return React.createElement('div',{key:p.name,style:{background:"#fff",borderRadius:12,border:"0.5px solid #E2E5EF",padding:16}},
+                  React.createElement('div',{style:{display:"flex",alignItems:"center",gap:10,marginBottom:12}},
+                    React.createElement(Avatar,{name:p.name,people}),
+                    React.createElement('div',null,
+                      React.createElement('div',{style:{fontSize:13,fontWeight:600,color:"#1B2A4A"}},p.name),
+                      React.createElement('div',{style:{fontSize:11,color:"#8A94A6"}},p.prjs.length+" project"+(p.prjs.length!==1?"s":""))
+                    ),
+                    React.createElement('div',{style:{marginLeft:"auto"}},React.createElement(Badge,bw))
+                  ),
+                  p.avg!==null&&React.createElement(ProgressBar,{value:p.avg}),
+                  React.createElement('div',{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginTop:12}},
+                    ...[["Logs",p.total,"#E6F1FB","#0C447C"],["In prog.",p.inProg,"#FAEEDA","#854F0B"],["Done",p.done,"#EAF3DE","#27500A"]].map(([l,v,bg,fg])=>
+                      React.createElement('div',{key:l,style:{background:bg,borderRadius:8,padding:"8px 10px",textAlign:"center"}},
+                        React.createElement('div',{style:{fontSize:11,color:fg,fontWeight:500}},l),
+                        React.createElement('div',{style:{fontSize:18,fontWeight:700,color:fg}},v)
+                      )
+                    )
+                  )
+                );
+              })
+            )
+          ),
+
+          // SETTINGS TAB
+          tab==="settings"&&React.createElement('div',{style:{display:"grid",gap:16}},
+            card(React.createElement(React.Fragment,null,
+              React.createElement('div',{style:{fontSize:14,fontWeight:600,color:"#1B2A4A",marginBottom:4}},"Team members"),
+              React.createElement('div',{style:{fontSize:12,color:"#8A94A6",marginBottom:14}},"Add or remove people. Save when done."),
+              React.createElement('div',{style:{display:"flex",flexWrap:"wrap",gap:6,marginBottom:10}},
+                ...editPeople.map(item=>React.createElement('div',{key:item,style:{display:"flex",alignItems:"center",gap:4,background:"#E6F1FB",color:"#0C447C",borderRadius:6,padding:"4px 10px",fontSize:12,fontWeight:500}},
+                  item,
+                  React.createElement('button',{onClick:()=>setEditPeople(ep=>ep.filter(x=>x!==item)),style:{background:"none",border:"none",cursor:"pointer",color:"#0C447C",fontSize:16,lineHeight:1,padding:"0 0 0 4px",opacity:0.5}},"×")
+                ))
+              ),
+              React.createElement('div',{style:{display:"flex",gap:8}},
+                React.createElement('input',{value:newPerson,onChange:e=>setNewPerson(e.target.value),onKeyDown:e=>e.key==="Enter"&&addPerson(),placeholder:"Type name + Enter",style:{flex:1,height:38,borderRadius:8,border:"1px solid #E2E5EF",padding:"0 12px",fontSize:13,background:"#F5F6FA",outline:"none",color:"#1A1A2E"}}),
+                React.createElement('button',{onClick:addPerson,style:{height:38,padding:"0 16px",borderRadius:8,border:"none",background:"#1B2A4A",color:"#fff",fontSize:13,fontWeight:600,cursor:"pointer"}},"Add")
+              )
+            )),
+            card(React.createElement(React.Fragment,null,
+              React.createElement('div',{style:{fontSize:14,fontWeight:600,color:"#1B2A4A",marginBottom:4}},"Projects"),
+              React.createElement('div',{style:{fontSize:12,color:"#8A94A6",marginBottom:14}},"Add new projects anytime. Remove completed ones."),
+              React.createElement('div',{style:{display:"flex",flexWrap:"wrap",gap:6,marginBottom:10}},
+                ...editProjects.map(item=>React.createElement('div',{key:item,style:{display:"flex",alignItems:"center",gap:4,background:"#EAF3DE",color:"#3B6D11",borderRadius:6,padding:"4px 10px",fontSize:12,fontWeight:500}},
+                  item,
+                  React.createElement('button',{onClick:()=>setEditProjects(ep=>ep.filter(x=>x!==item)),style:{background:"none",border:"none",cursor:"pointer",color:"#3B6D11",fontSize:16,lineHeight:1,padding:"0 0 0 4px",opacity:0.5}},"×")
+                ))
+              ),
+              React.createElement('div',{style:{display:"flex",gap:8}},
+                React.createElement('input',{value:newProject,onChange:e=>setNewProject(e.target.value),onKeyDown:e=>e.key==="Enter"&&addProject(),placeholder:"Project name + Enter",style:{flex:1,height:38,borderRadius:8,border:"1px solid #E2E5EF",padding:"0 12px",fontSize:13,background:"#F5F6FA",outline:"none",color:"#1A1A2E"}}),
+                React.createElement('button',{onClick:addProject,style:{height:38,padding:"0 16px",borderRadius:8,border:"none",background:"#1B2A4A",color:"#fff",fontSize:13,fontWeight:600,cursor:"pointer"}},"Add")
+              )
+            )),
+            React.createElement('div',{style:{background:"#1B2A4A",borderRadius:12,padding:20,display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,flexWrap:"wrap"}},
+              React.createElement('div',null,
+                React.createElement('div',{style:{fontSize:13,fontWeight:600,color:"#fff"}},"Save settings"),
+                React.createElement('div',{style:{fontSize:11,color:"rgba(255,255,255,0.45)",marginTop:2}},"Updates dropdowns on this device")
+              ),
+              React.createElement('div',{style:{display:"flex",alignItems:"center",gap:12}},
+                settingsSaved&&React.createElement('span',{style:{fontSize:12,color:"#C0DD97",fontWeight:500}},"Saved"),
+                React.createElement('button',{onClick:saveSettings,style:{height:40,padding:"0 24px",borderRadius:8,border:"none",background:"#C0DD97",color:"#27500A",fontSize:13,fontWeight:700,cursor:"pointer"}},"Save settings")
+              )
+            )
+          )
+        )
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
+  </script>
+</body>
+</html>
