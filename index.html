@@ -22,7 +22,7 @@ input[type="date"]{height:38px;border-radius:8px;border:1px solid #E2E5EF;paddin
 </head>
 <body>
 <div id="root"></div>
-<script type="text/babel" data-presets="react">
+<script type="text/babel" data-presets="react,env">
 const {useState,useEffect,useMemo,useCallback}=React;
 const E=React.createElement;
 
@@ -188,7 +188,7 @@ const DEF_PEOPLE = ["Shipra","Tanya","Kanika","Binita","Sparsh","Akshat"];
 function fmtDate(d=new Date()){
   return d.getDate()+"-"+["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getMonth()]+"-"+String(d.getFullYear()).slice(2);
 }
-function toISO(d){if(!d)return"";const p=d.split("-");const mo=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"].indexOf(p[1]);return`20${p[2]}-${String(mo+1).padStart(2,"0")}-${String(p[0]).padStart(2,"0")}`;}
+function toISO(d){if(!d)return"";var pts=d.split("-");var months=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];var mo=months.indexOf(pts[1]);var mm=String(mo+1).padStart(2,"0");var dd=String(pts[0]).padStart(2,"0");return"20"+pts[2]+"-"+mm+"-"+dd;}
 function fromISO(s){if(!s)return"";const d=new Date(s+"T00:00:00");return fmtDate(d);}
 function daysBetween(a,b){const ms=new Date(b)-new Date(a);return Math.round(ms/86400000);}
 function addDays(iso,n){const d=new Date(iso+"T00:00:00");d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);}
@@ -353,11 +353,11 @@ function NewProjectModal({people,onSave,onClose}){
 
 // ── Log Modal ─────────────────────────────────────────────────────────────────
 function LogModal({people,projects,editEntry,onSave,onClose}){
-  const [personName,setPersonName]=useState(editEntry?.name||"");
-  const [projId,setProjId]=useState(editEntry?.projectId||"");
-  const [stage,setStage]=useState(editEntry?.stage||"");
-  const [grade,setGrade]=useState(editEntry?.grade??null);
-  const [notes,setNotes]=useState(editEntry?.notes||"");
+  const [personName,setPersonName]=useState(editEntry && editEntry.name||"");
+  const [projId,setProjId]=useState(editEntry && editEntry.projectId||"");
+  const [stage,setStage]=useState(editEntry && editEntry.stage||"");
+  const [grade,setGrade]=useState(editEntry != null && editEntry.grade != null ? editEntry.grade : null);
+  const [notes,setNotes]=useState(editEntry && editEntry.notes||"");
 
   const selProj=projects.find(p=>p.id===projId);
   const stageOpts=selProj?selProj.stages.map(s=>s.stage):[];
@@ -365,11 +365,11 @@ function LogModal({people,projects,editEntry,onSave,onClose}){
   function save(){
     if(!personName||!projId||!stage||grade===null)return;
     onSave({
-      id:editEntry?.id||"l"+Date.now(),
-      date:editEntry?.date||fmtDate(),
+      id:editEntry && editEntry.id||"l"+Date.now(),
+      date:editEntry && editEntry.date||fmtDate(),
       name:personName,projectId:projId,
-      projectName:selProj?.name||"",
-      wf:selProj?.wf||"",
+      projectName:selProj && selProj.name||"",
+      wf:selProj && selProj.wf||"",
       stage,grade,notes
     });
   }
@@ -515,8 +515,8 @@ function App(){
   // AI analysis
   async function runAnalysis(){
     setAnalysing(true);setAnalysisTxt("");
-    const summary=peopleStats.map(p=>`${p.name}: ${p.total} logs, avg grade ${p.avg?.toFixed(1)||"n/a"}, active projects: ${p.activeCount}, done stages: ${p.done}, in progress: ${p.inProg}. Workflows: ${Object.entries(p.byWF).map(([w,d])=>`${w}(avg ${d.avg.toFixed(1)})`).join(", ")}`).join("\n");
-    const projSummary=projStats.map(p=>`${p.name} [${p.wf}]: status=${p.status}, avg grade=${p.avgGrade.toFixed(1)}, stages done=${p.doneStages}/${p.stages.length}`).join("\n");
+    const summary=peopleStats.map(function(p){return p.name+": "+p.total+" logs, avg grade "+(p.avg!=null?p.avg.toFixed(1):"n/a")+", active projects: "+p.activeCount+", done stages: "+p.done+", in progress: "+p.inProg+". Workflows: "+Object.entries(p.byWF).map(function(e){return e[0]+"(avg "+e[1].avg.toFixed(1)+")"}).join(", ");}).join("\n");
+    const projSummary=projStats.map(function(p){return p.name+" ["+p.wf+"]: status="+p.status+", avg grade="+p.avgGrade.toFixed(1)+", stages done="+p.doneStages+"/"+p.stages.length;}).join("\n");
     try{
       const res=await fetch("https://api.anthropic.com/v1/messages",{
         method:"POST",
@@ -524,11 +524,17 @@ function App(){
         body:JSON.stringify({
           model:"claude-sonnet-4-20250514",
           max_tokens:1000,
-          messages:[{role:"user",content:`You are a team performance analyst. Based on this data, give a concise written analysis (3-4 paragraphs) covering: (1) who is overloaded vs has bandwidth, (2) work speed patterns by activity type, (3) project health and where time is being lost, (4) recommendations.\n\nPeople data:\n${summary}\n\nProject data:\n${projSummary}`}]
+          messages:[{role:"user",content:"You are a team performance analyst. Based on this data, give a concise written analysis (3-4 paragraphs) covering: (1) who is overloaded vs has bandwidth, (2) work speed patterns by activity type, (3) project health and where time is being lost, (4) recommendations.
+
+People data:
+"+summary+"
+
+Project data:
+"+projSummary}]
         })
       });
       const d=await res.json();
-      setAnalysisTxt(d.content?.[0]?.text||"No analysis returned.");
+      setAnalysisTxt(d.content && d.content[0] && d.content[0].text||"No analysis returned.");
     }catch(e){setAnalysisTxt("Could not load analysis. Please try again.");}
     setAnalysing(false);
   }
@@ -638,7 +644,7 @@ function App(){
                   p.startDate&&E('span',{style:{fontSize:11,color:"#8A94A6"}},fromISO(p.startDate)+" → "+fromISO(p.endDate))
                 )
               ),
-              E(Bar,{value:p.avgGrade,color:wf?.color}),
+              E(Bar,{value:p.avgGrade,color:wf && wf.color}),
               E('div',{style:{fontSize:11,color:"#8A94A6",marginTop:4,marginBottom:12}},p.doneStages+"/"+p.stages.length+" stages complete"),
 
               // stage timeline
@@ -647,7 +653,7 @@ function App(){
                   const{bg,fg}=gradeColor(s.grade);
                   const overdue=s.isOverdue;
                   return E('div',{key:si,style:{display:"flex",alignItems:"center",gap:8,padding:"5px 8px",borderRadius:6,background:overdue?"#FFF5F5":si%2===0?"#F9FAFB":"#fff",border:overdue?"0.5px solid #F7C1C1":"0.5px solid #EEF0F5"}},
-                    E('div',{style:{width:20,height:20,borderRadius:"50%",background:wf?.color||"#1B2A4A",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:700,flexShrink:0}},si+1),
+                    E('div',{style:{width:20,height:20,borderRadius:"50%",background:wf && wf.color||"#1B2A4A",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:700,flexShrink:0}},si+1),
                     E('div',{style:{flex:1,fontSize:11,color:"#1A1A2E"}},s.stage),
                     s.deadline&&E('span',{style:{fontSize:10,color:overdue?"#A32D2D":"#8A94A6",fontWeight:overdue?600:400,flexShrink:0}},overdue?"⚠ Overdue":"Due: "+fromISO(s.deadline)),
                     E('span',{style:{display:"inline-flex",alignItems:"center",justifyContent:"center",width:22,height:22,borderRadius:"50%",background:bg,color:fg,fontWeight:700,fontSize:11,flexShrink:0}},s.grade)
@@ -688,9 +694,9 @@ function App(){
                 ...Object.entries(p.byWF).map(([w,d])=>{
                   const wf=WORKFLOWS[w];
                   return E('div',{key:w,style:{display:"flex",alignItems:"center",gap:6,marginBottom:4}},
-                    E('div',{style:{width:8,height:8,borderRadius:"50%",background:wf?.color||"#ccc",flexShrink:0}}),
+                    E('div',{style:{width:8,height:8,borderRadius:"50%",background:wf && wf.color||"#ccc",flexShrink:0}}),
                     E('span',{style:{fontSize:11,color:"#5F5E5A",flex:1}},w.length>20?w.slice(0,20)+"…":w),
-                    E('span',{style:{fontSize:11,fontWeight:600,color:wf?.color||"#333"}},d.avg.toFixed(1))
+                    E('span',{style:{fontSize:11,fontWeight:600,color:wf && wf.color||"#333"}},d.avg.toFixed(1))
                   );
                 })
               )
