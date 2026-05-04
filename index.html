@@ -16,13 +16,14 @@ button,select,input,textarea{font-family:inherit;}
 .btn{height:32px;padding:0 14px;border-radius:8px;border:none;font-size:12px;font-weight:600;cursor:pointer;}
 .btn-dark{background:#2E4A7A;color:#fff;}
 .btn-green{background:#C0DD97;color:#27500A;}
-.btn-primary{background:#1B2A4A;color:#fff;height:40px;padding:0 20px;font-size:13px;}
+.btn-primary{background:#1B2A4A;color:#fff;height:40px;padding:0 20px;font-size:13px;border:none;border-radius:8px;cursor:pointer;font-weight:600;}
 .btn-primary:disabled{background:#D3D1C7;cursor:not-allowed;}
+.btn-danger{background:#FCEBEB;color:#A32D2D;border:0.5px solid #F7C1C1;height:36px;padding:0 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;}
 .tabs{background:#fff;border-bottom:0.5px solid #E2E5EF;display:flex;padding:0 16px;overflow-x:auto;}
 .tab{padding:12px 16px;font-size:13px;font-weight:500;cursor:pointer;border:none;background:none;border-bottom:2px solid transparent;color:#8A94A6;white-space:nowrap;}
 .tab.active{color:#0B6E6E;border-bottom-color:#0B6E6E;}
-.page{max-width:900px;margin:0 auto;padding:20px 16px;}
-.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px;}
+.page{max-width:920px;margin:0 auto;padding:20px 16px;}
+.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:18px;}
 .stat-card{background:#fff;border-radius:10px;border:0.5px solid #E2E5EF;padding:12px 14px;}
 .stat-label{font-size:10px;font-weight:600;color:#8A94A6;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:3px;}
 .stat-val{font-size:20px;font-weight:600;color:#1B2A4A;}
@@ -43,10 +44,10 @@ select.input{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xml
 .scale-hint{font-size:10px;color:#8A94A6;background:#F5F6FA;border-radius:4px;padding:2px 6px;}
 .pill{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;font-weight:700;font-size:12px;}
 .badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap;}
-.wf-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:4px;}
+.wf-dot{width:8px;height:8px;border-radius:50%;display:inline-block;}
 table{width:100%;border-collapse:collapse;font-size:12px;}
 th{padding:8px 10px;text-align:left;color:#fff;font-weight:600;font-size:11px;background:#1B2A4A;}
-td{padding:8px 10px;border-bottom:0.5px solid #EEF0F5;}
+td{padding:8px 10px;border-bottom:0.5px solid #EEF0F5;vertical-align:middle;}
 tr:nth-child(even) td{background:#F9FAFB;}
 .avatar{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:11px;flex-shrink:0;}
 .bar-wrap{display:flex;align-items:center;gap:8px;}
@@ -58,6 +59,7 @@ tr:nth-child(even) td{background:#F9FAFB;}
 .modal-title{font-size:15px;font-weight:600;color:#1B2A4A;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;}
 .modal-close{background:none;border:none;font-size:22px;cursor:pointer;color:#8A94A6;line-height:1;}
 .two-col{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
 .stage-row{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:7px;border:0.5px solid #EEF0F5;margin-bottom:4px;}
 .stage-num{width:20px;height:20px;border-radius:50%;color:#fff;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;flex-shrink:0;}
 .stage-name{flex:1;font-size:11px;color:#1A1A2E;}
@@ -78,22 +80,28 @@ tr:nth-child(even) td{background:#F9FAFB;}
 .action-btn{width:26px;height:26px;border-radius:4px;font-size:12px;cursor:pointer;font-weight:600;border:0.5px solid;}
 .edit-btn{background:#E6F1FB;color:#185FA5;border-color:#B5D4F4;}
 .del-btn{background:#FCEBEB;color:#A32D2D;border-color:#F7C1C1;font-size:14px;}
-.save-btn{background:#0B6E6E;color:#fff;border:none;height:26px;padding:0 8px;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;}
-.cancel-btn{background:#F5F6FA;color:#8A94A6;border:0.5px solid #E2E5EF;height:26px;padding:0 8px;border-radius:4px;font-size:11px;cursor:pointer;}
 .empty{text-align:center;padding:40px;color:#8A94A6;font-size:13px;}
 .analysis-box{font-size:13px;line-height:1.7;background:#F9FAFB;border-radius:8px;padding:14px 16px;white-space:pre-wrap;color:#1A1A2E;}
 .info-box{font-size:12px;color:#8A94A6;background:#F5F6FA;padding:10px 12px;border-radius:8px;margin-bottom:14px;}
-input[type=date]{height:38px;border-radius:8px;border:1px solid #E2E5EF;padding:0 12px;font-size:13px;background:#F5F6FA;color:#1A1A2E;outline:none;width:100%;}
+input[type=date],input[type=number]{height:38px;border-radius:8px;border:1px solid #E2E5EF;padding:0 12px;font-size:13px;background:#F5F6FA;color:#1A1A2E;outline:none;width:100%;font-family:inherit;}
+input[type=password]{height:38px;border-radius:8px;border:1px solid #E2E5EF;padding:0 12px;font-size:13px;background:#F5F6FA;color:#1A1A2E;outline:none;width:100%;font-family:inherit;}
 .tag{display:inline-flex;align-items:center;gap:4px;border-radius:6px;padding:4px 10px;font-size:12px;font-weight:500;margin:2px;}
 .tag-x{background:none;border:none;cursor:pointer;font-size:15px;line-height:1;padding:0 0 0 2px;opacity:0.5;}
 textarea.input{height:70px;padding:10px 12px;resize:vertical;}
+.hours-flag-ok{background:#EAF3DE;color:#3B6D11;border-radius:6px;padding:3px 8px;font-size:11px;font-weight:600;}
+.hours-flag-warn{background:#FFF3CD;color:#856404;border-radius:6px;padding:3px 8px;font-size:11px;font-weight:600;}
+.hours-flag-bad{background:#FCEBEB;color:#A32D2D;border-radius:6px;padding:3px 8px;font-size:11px;font-weight:600;}
+.proj-mgmt{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;border-radius:8px;border:0.5px solid #E2E5EF;margin-bottom:6px;background:#F9FAFB;}
+.lock-screen{display:flex;align-items:center;justify-content:center;min-height:300px;}
+.lock-box{background:#fff;border-radius:16px;border:0.5px solid #E2E5EF;padding:32px;max-width:320px;width:100%;text-align:center;}
+.time-summary{display:flex;align-items:center;gap:8px;padding:8px 10px;background:#F5F6FA;border-radius:8px;margin-top:8px;font-size:12px;}
 </style>
 </head>
 <body>
 
 <div class="topbar">
-  <div class="wf-dot" style="background:#C0DD97;width:8px;height:8px;"></div>
-  <span class="topbar-title" id="topbar-title">Team Tracker</span>
+  <div class="wf-dot" style="background:#C0DD97;width:8px;height:8px;flex-shrink:0;"></div>
+  <span class="topbar-title">Team Tracker</span>
   <span class="topbar-sub">shared workspace</span>
   <div class="topbar-actions">
     <button class="btn btn-dark" onclick="openNewProject()">+ New project</button>
@@ -114,8 +122,8 @@ textarea.input{height:70px;padding:10px 12px;resize:vertical;}
     <div class="stat-card"><div class="stat-label">Projects</div><div class="stat-val" id="stat-projects">0</div></div>
     <div class="stat-card"><div class="stat-label">People</div><div class="stat-val" id="stat-people">0</div></div>
     <div class="stat-card"><div class="stat-label">Stages done</div><div class="stat-val" id="stat-done">0</div></div>
+    <div class="stat-card"><div class="stat-label">Avg hrs/day</div><div class="stat-val" id="stat-hrs">—</div></div>
   </div>
-
   <div id="tab-log"></div>
   <div id="tab-projects" class="hidden"></div>
   <div id="tab-people" class="hidden"></div>
@@ -158,8 +166,10 @@ textarea.input{height:70px;padding:10px 12px;resize:vertical;}
       <span id="modal-log-title">Today's Log</span>
       <button class="modal-close" onclick="closeModal('modal-log')">×</button>
     </div>
-    <div class="field"><label>Your name</label><select class="input" id="log-name"><option value="">Select...</option></select></div>
-    <div class="field"><label>Project</label><select class="input" id="log-proj" onchange="onLogProjChange()"><option value="">Select project...</option></select></div>
+    <div class="two-col">
+      <div class="field"><label>Your name</label><select class="input" id="log-name" onchange="onLogPersonChange()"><option value="">Select...</option></select></div>
+      <div class="field"><label>Project</label><select class="input" id="log-proj" onchange="onLogProjChange()"><option value="">Select project...</option></select></div>
+    </div>
     <div id="log-wf-badge" style="margin-bottom:12px;display:none;"></div>
     <div class="field" id="log-stage-field" style="display:none;"><label>Stage</label><select class="input" id="log-stage"><option value="">Select stage...</option></select></div>
     <div class="field">
@@ -178,14 +188,34 @@ textarea.input{height:70px;padding:10px 12px;resize:vertical;}
         <span class="scale-hint">4 = 80%</span><span class="scale-hint">5 = Done</span>
       </div>
     </div>
+    <div class="field">
+      <label>Hours spent on this task today</label>
+      <input type="number" class="input" id="log-hours" min="0" max="24" step="0.5" placeholder="e.g. 2.5"/>
+      <div id="log-hours-summary" style="margin-top:8px;display:none;"></div>
+    </div>
     <div class="field"><label>Notes (optional)</label><textarea class="input" id="log-notes" placeholder="Any blockers, updates..."></textarea></div>
     <button class="btn-primary" style="width:100%" onclick="saveLog()">Log it</button>
     <div id="log-err" style="color:#A32D2D;font-size:12px;margin-top:8px;display:none;">Please fill in all required fields</div>
   </div>
 </div>
 
+<!-- PASSWORD MODAL -->
+<div class="modal-overlay hidden" id="modal-password">
+  <div class="modal" style="max-width:360px;">
+    <div class="modal-title">
+      <span>Settings — Enter Password</span>
+      <button class="modal-close" onclick="closeModal('modal-password')">×</button>
+    </div>
+    <div class="field"><label>Password</label><input type="password" id="settings-pw-input" placeholder="Enter password" onkeydown="if(event.key==='Enter')checkPassword()"/></div>
+    <div id="pw-err" style="color:#A32D2D;font-size:12px;margin-bottom:10px;display:none;">Incorrect password</div>
+    <button class="btn-primary" style="width:100%" onclick="checkPassword()">Unlock Settings</button>
+  </div>
+</div>
+
 <script>
-// ── Data ──────────────────────────────────────────────────────────────────────
+var SETTINGS_PASSWORD = "sort2024";
+var settingsUnlocked = false;
+
 var WORKFLOWS = {
   "Brand Comm Strategy": { color:"#4A6FA5", light:"#EBF0FA", stages:["Brand brief doc","Brand brief call with client","3C","Community connect","Strategy deck completion","Incorporating feedback and final deck","Strategy presentation meeting","Mailing to client","Handover to content strategy team"] },
   "Content Strategy": { color:"#0B6E6E", light:"#E6F5F5", stages:["Receive handover","Plotting ideas on excel","Always-on paid ads","Hygiene content ideas","Hub campaigns","Hero campaigns","Roll-out plan","Incorporating feedback, adding videos and final deck","Content strategy presentation","Mailing to client"] },
@@ -196,18 +226,19 @@ var WORKFLOWS = {
   "SYM — Reels": { color:"#1565A0", light:"#E8F1FB", stages:["Research","Script first draft","Asset collation","Share with Shipra","Finalise script","Shoot","Briefing editor + handover","Sharing feedback with editor","Handover final reel","Creating thumbnail","Go live"] },
   "SYM — Carousels": { color:"#5C6BC0", light:"#ECEEF9", stages:["Research","Content flow","Image addition","Creation of carousel","Input from Shipra","Final approval","Go live"] },
   "Archish — Retainer": { color:"#546E7A", light:"#EDF1F3", stages:["Monthly content plan","Presentation","Calendar","Execution","Reviews","Finalisation"] },
-  "Creative Audit": { color:"#6D4C41", light:"#F3EDE9", stages:["Creative Audit — Progress"] }
+  "Creative Audit": { color:"#6D4C41", light:"#F3EDE9", stages:["Creative Audit — Progress"] },
+  "Time-off": { color:"#78909C", light:"#ECEFF1", stages:["Time-off"] },
+  "New Business Development": { color:"#2E7D32", light:"#E8F5E9", stages:["Initial meetings","Proposal development","Negotiations","MSA / Contract","Kick off mail"] }
 };
 var WF_NAMES = Object.keys(WORKFLOWS);
 var DEF_PEOPLE = ["Shipra","Tanya","Kanika","Binita","Sparsh","Akshat"];
-var AV_COLORS = ["#E6F1FB","#EAF3DE","#FAEEDA","#FCEBEB","#EEEDFE","#F1EFE8","#E1F5EE","#FBEAF0"];
-var AV_FGS    = ["#0C447C","#27500A","#633806","#791F1F","#3C3489","#444441","#085041","#72243E"];
+var AV_COLORS = ["#E6F1FB","#EAF3DE","#FAEEDA","#FCEBEB","#EEEDFE","#F1EFE8","#E1F5EE","#FBEAF0","#FEF0E0","#F0F8FF"];
+var AV_FGS    = ["#0C447C","#27500A","#633806","#791F1F","#3C3489","#444441","#085041","#72243E","#7A4A00","#1A3A5C"];
 
-// State
 var state = {
-  logs: lsGet("trk2_logs") || [],
-  projects: lsGet("trk2_projects") || [],
-  people: lsGet("trk2_people") || DEF_PEOPLE,
+  logs: lsGet("trk3_logs") || [],
+  projects: lsGet("trk3_projects") || [],
+  people: lsGet("trk3_people") || DEF_PEOPLE,
   activeTab: "log",
   editLogId: null,
   selectedGrade: null,
@@ -218,23 +249,38 @@ var state = {
 
 function lsGet(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } }
 function lsSet(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
-function save(){ lsSet("trk2_logs",state.logs); lsSet("trk2_projects",state.projects); lsSet("trk2_people",state.people); updateStats(); }
+function save(){ lsSet("trk3_logs",state.logs); lsSet("trk3_projects",state.projects); lsSet("trk3_people",state.people); updateStats(); }
 
 function fmtDate(d){ if(!d) d=new Date(); return d.getDate()+"-"+["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getMonth()]+"-"+String(d.getFullYear()).slice(2); }
 function fromISO(s){ if(!s)return""; var d=new Date(s+"T12:00:00"); return fmtDate(d); }
 function daysBetween(a,b){ return Math.round((new Date(b)-new Date(a))/86400000); }
 function addDays(iso,n){ var d=new Date(iso+"T12:00:00"); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); }
 function today(){ return new Date().toISOString().slice(0,10); }
+function todayStr(){ return fmtDate(new Date()); }
 
 function gcBg(g){ if(g===5)return"#C0DD97"; if(g>=3)return"#EAF3DE"; if(g>=1)return"#FAEEDA"; return"#FCEBEB"; }
 function gcFg(g){ if(g===5)return"#27500A"; if(g>=3)return"#3B6D11"; if(g>=1)return"#854F0B"; return"#A32D2D"; }
-
 function pill(grade){ return '<span class="pill" style="background:'+gcBg(grade)+';color:'+gcFg(grade)+'">'+grade+'</span>'; }
 function badge(label,bg,fg){ return '<span class="badge" style="background:'+bg+';color:'+fg+'">'+label+'</span>'; }
-function wfBadge(wf){ var w=WORKFLOWS[wf]; if(!w)return""; return badge(wf,w.light,w.color); }
 function avatar(name){ var i=Math.max(0,state.people.indexOf(name))%AV_COLORS.length; var ini=name.split(" ").map(function(w){return w[0];}).join("").slice(0,2).toUpperCase(); return '<div class="avatar" style="background:'+AV_COLORS[i]+';color:'+AV_FGS[i]+'">'+ini+'</div>'; }
 function bar(value,color){ var pct=Math.round((value/5)*100); return '<div class="bar-wrap"><div class="bar-track"><div class="bar-fill" style="width:'+pct+'%;background:'+(color||gcBg(Math.round(value)))+';"></div></div><span class="bar-pct">'+pct+'%</span></div>'; }
 function statusColor(s){ if(s==="On Time")return{bg:"#EAF3DE",fg:"#3B6D11"}; if(s==="At Risk")return{bg:"#FFF3CD",fg:"#856404"}; if(s==="Overdue")return{bg:"#FCEBEB",fg:"#A32D2D"}; if(s==="Done")return{bg:"#C0DD97",fg:"#27500A"}; return{bg:"#F1EFE8",fg:"#5F5E5A"}; }
+
+function hoursFlag(hrs){
+  if(hrs===null||hrs===undefined||hrs==="")return"";
+  hrs=parseFloat(hrs);
+  if(isNaN(hrs))return"";
+  if(hrs<7)return'<span class="hours-flag-bad">⚠ '+hrs+'h — Under 7h</span>';
+  if(hrs>9)return'<span class="hours-flag-bad">⚠ '+hrs+'h — Over 9h</span>';
+  if(hrs<8)return'<span class="hours-flag-warn">'+hrs+'h — Slightly under 8h</span>';
+  if(hrs>8)return'<span class="hours-flag-warn">'+hrs+'h — Slightly over 8h</span>';
+  return'<span class="hours-flag-ok">✓ '+hrs+'h — On target</span>';
+}
+
+function getDailyHours(personName, dateStr){
+  var logs = state.logs.filter(function(l){ return l.name===personName && l.date===dateStr && l.hours; });
+  return logs.reduce(function(a,l){ return a+parseFloat(l.hours||0); }, 0);
+}
 
 function calcStatus(proj){
   var t=today();
@@ -250,12 +296,29 @@ function calcStatus(proj){
   return actual>=expected-15?"On Time":"At Risk";
 }
 
-// ── Tab switching ─────────────────────────────────────────────────────────────
+// ── Tab switching ──────────────────────────────────────────────────────────────
 function switchTab(t){
+  if(t==="settings" && !settingsUnlocked){
+    document.getElementById("settings-pw-input").value="";
+    document.getElementById("pw-err").style.display="none";
+    document.getElementById("modal-password").classList.remove("hidden");
+    return;
+  }
   state.activeTab=t;
   document.querySelectorAll(".tab").forEach(function(el){ el.classList.toggle("active",el.dataset.tab===t); });
   ["log","projects","people","settings"].forEach(function(id){ document.getElementById("tab-"+id).classList.toggle("hidden",id!==t); });
   renderTab(t);
+}
+
+function checkPassword(){
+  var val=document.getElementById("settings-pw-input").value;
+  if(val===SETTINGS_PASSWORD){
+    settingsUnlocked=true;
+    closeModal("modal-password");
+    switchTab("settings");
+  } else {
+    document.getElementById("pw-err").style.display="block";
+  }
 }
 
 function renderTab(t){
@@ -270,20 +333,35 @@ function updateStats(){
   document.getElementById("stat-projects").textContent=state.projects.length;
   document.getElementById("stat-people").textContent=state.people.length;
   document.getElementById("stat-done").textContent=state.logs.filter(function(l){return l.grade===5;}).length;
+  var logsWithHours=state.logs.filter(function(l){return l.hours&&parseFloat(l.hours)>0;});
+  if(logsWithHours.length){
+    // avg daily hours per person per day
+    var days={};
+    logsWithHours.forEach(function(l){
+      var key=l.name+"_"+l.date;
+      days[key]=(days[key]||0)+parseFloat(l.hours);
+    });
+    var vals=Object.values(days);
+    var avg=vals.reduce(function(a,v){return a+v;},0)/vals.length;
+    document.getElementById("stat-hrs").textContent=avg.toFixed(1)+"h";
+  } else {
+    document.getElementById("stat-hrs").textContent="—";
+  }
   renderTab(state.activeTab);
 }
 
-// ── LOG TAB ───────────────────────────────────────────────────────────────────
+// ── LOG TAB ────────────────────────────────────────────────────────────────────
 function renderLog(){
-  var fp=document.getElementById("filter-person")||null;
-  var fpVal=fp?fp.value:"All";
+  var fpVal=(document.getElementById("filter-person")||{}).value||"All";
   var fwVal=(document.getElementById("filter-wf")||{}).value||"All";
   var fprVal=(document.getElementById("filter-proj")||{}).value||"All";
+  var fdVal=(document.getElementById("filter-date")||{}).value||"";
 
   var fLogs=state.logs.filter(function(l){
     if(fpVal!=="All"&&l.name!==fpVal)return false;
     if(fwVal!=="All"&&l.wf!==fwVal)return false;
     if(fprVal!=="All"&&l.projectId!==fprVal)return false;
+    if(fdVal&&l.date!==fmtDate(new Date(fdVal+"T12:00:00")))return false;
     return true;
   });
 
@@ -293,15 +371,27 @@ function renderLog(){
 
   var rows=fLogs.slice(0,60).map(function(l,i){
     var wf=WORKFLOWS[l.wf]||{};
-    var wfSpan=wf.color?'<span style="background:'+wf.light+';color:'+wf.color+';padding:2px 7px;border-radius:10px;font-size:10px;font-weight:600;">'+l.wf.slice(0,16)+'</span>':"";
-    return '<tr><td>'+l.date+'</td><td><div style="display:flex;align-items:center;gap:5px;">'+avatar(l.name)+'<span style="font-size:11px;font-weight:500;">'+l.name+'</span></div></td><td style="font-weight:500;font-size:11px;">'+l.projectName+'</td><td>'+wfSpan+'</td><td style="font-size:11px;color:#5F5E5A;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+l.stage+'</td><td style="text-align:center;">'+pill(l.grade)+'</td><td style="font-size:11px;color:#8A94A6;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(l.notes||"—")+'</td><td style="text-align:center;"><button class="action-btn edit-btn" onclick="openLog(\''+l.id+'\')">✎</button></td><td style="text-align:center;"><button class="action-btn del-btn" onclick="deleteLog(\''+l.id+'\')">×</button></td></tr>';
+    var wfSpan=wf.color?'<span style="background:'+wf.light+';color:'+wf.color+';padding:2px 7px;border-radius:10px;font-size:10px;font-weight:600;">'+l.wf.slice(0,14)+'</span>':"";
+    var hrsCell=l.hours?hoursFlag(l.hours):'<span style="color:#D3D1C7;font-size:11px;">—</span>';
+    return '<tr><td>'+l.date+'</td><td><div style="display:flex;align-items:center;gap:5px;">'+avatar(l.name)+'<span style="font-size:11px;font-weight:500;">'+l.name+'</span></div></td><td style="font-weight:500;font-size:11px;">'+l.projectName+'</td><td>'+wfSpan+'</td><td style="font-size:11px;color:#5F5E5A;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+l.stage+'</td><td style="text-align:center;">'+pill(l.grade)+'</td><td>'+hrsCell+'</td><td style="font-size:11px;color:#8A94A6;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(l.notes||"—")+'</td><td style="text-align:center;"><button class="action-btn edit-btn" onclick="openLog(\''+l.id+'\')">✎</button></td><td style="text-align:center;"><button class="action-btn del-btn" onclick="deleteLog(\''+l.id+'\')">×</button></td></tr>';
   }).join("");
 
-  document.getElementById("tab-log").innerHTML='<div class="card"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;"><div class="card-title" style="margin:0">Activity log</div><div class="filters"><select class="filter-sel" id="filter-person" onchange="renderLog()">'+filterOpts+'</select><select class="filter-sel" id="filter-wf" onchange="renderLog()">'+wfOpts+'</select><select class="filter-sel" id="filter-proj" onchange="renderLog()">'+prOpts+'</select></div></div>'+(fLogs.length===0?'<div class="empty">No entries yet. Hit "+ Log today" to start.</div>':'<div style="overflow-x:auto;"><table><thead><tr><th style="width:70px">Date</th><th style="width:95px">Person</th><th style="width:100px">Project</th><th style="width:110px">Workflow</th><th style="width:140px">Stage</th><th style="width:50px;text-align:center">Grade</th><th style="width:120px">Notes</th><th style="width:32px"></th><th style="width:32px"></th></tr></thead><tbody>'+rows+'</tbody></table></div>')+'</div>';
+  document.getElementById("tab-log").innerHTML='<div class="card"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;"><div class="card-title" style="margin:0">Activity log</div><div class="filters"><select class="filter-sel" id="filter-person" onchange="renderLog()">'+filterOpts+'</select><select class="filter-sel" id="filter-wf" onchange="renderLog()">'+wfOpts+'</select><select class="filter-sel" id="filter-proj" onchange="renderLog()">'+prOpts+'</select><input type="date" id="filter-date" style="height:30px;border-radius:6px;border:0.5px solid #E2E5EF;padding:0 8px;font-size:12px;background:#F5F6FA;outline:none;color:#1A1A2E;width:auto;" onchange="renderLog()" value="'+fdVal+'"/></div></div>'+(fLogs.length===0?'<div class="empty">No entries yet. Hit "+ Log today" to start.</div>':'<div style="overflow-x:auto;"><table><thead><tr><th style="width:70px">Date</th><th style="width:90px">Person</th><th style="width:95px">Project</th><th style="width:100px">Workflow</th><th style="width:120px">Stage</th><th style="width:50px;text-align:center">Grade</th><th style="width:80px">Hours</th><th style="width:100px">Notes</th><th style="width:30px"></th><th style="width:30px"></th></tr></thead><tbody>'+rows+'</tbody></table></div>')+'</div>';
 }
 
 function deleteLog(id){
   if(!confirm("Delete this entry?"))return;
+  var log=state.logs.find(function(l){return l.id===id;});
+  if(log){
+    // revert project stage grade to 0 if this was the only log for that stage
+    var otherLogs=state.logs.filter(function(l){return l.id!==id&&l.projectId===log.projectId&&l.stage===log.stage;});
+    if(otherLogs.length===0){
+      state.projects=state.projects.map(function(p){
+        if(p.id!==log.projectId)return p;
+        return Object.assign({},p,{stages:p.stages.map(function(s){return s.stage===log.stage?Object.assign({},s,{grade:0}):s;})});
+      });
+    }
+  }
   state.logs=state.logs.filter(function(l){return l.id!==id;});
   save();
 }
@@ -318,14 +408,12 @@ function renderProjects(){
     var sc=statusColor(status);
     var avgGrade=p.stages.reduce(function(a,s){return a+s.grade;},0)/p.stages.length;
     var doneCount=p.stages.filter(function(s){return s.grade===5;}).length;
-
     var stageRows=p.stages.map(function(s,si){
       var overdue=s.deadline&&today()>s.deadline&&s.grade<5;
       var dueStr=s.deadline?"Due: "+fromISO(s.deadline):"";
       if(overdue)dueStr='<span style="color:#A32D2D;font-weight:600;">⚠ Overdue</span>';
       return '<div class="stage-row'+(overdue?" overdue":"")+'"><div class="stage-num" style="background:'+wf.color+'">'+(si+1)+'</div><div class="stage-name">'+s.stage+'</div><span style="font-size:10px;color:#8A94A6;flex-shrink:0;">'+dueStr+'</span><span class="pill" style="background:'+gcBg(s.grade)+';color:'+gcFg(s.grade)+';width:22px;height:22px;font-size:11px;flex-shrink:0;">'+s.grade+'</span></div>';
     }).join("");
-
     return '<div class="card"><div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px;gap:8px;flex-wrap:wrap;"><div><div style="font-size:14px;font-weight:600;color:#1B2A4A;margin-bottom:4px;">'+p.name+'</div><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;"><span style="background:'+wf.light+';color:'+wf.color+';padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;">'+p.wf+'</span>'+(p.owner?'<span style="font-size:11px;color:#8A94A6;">Lead: '+p.owner+'</span>':'')+'</div></div><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'+badge(status,sc.bg,sc.fg)+(p.startDate?'<span style="font-size:11px;color:#8A94A6;">'+fromISO(p.startDate)+' → '+fromISO(p.endDate)+'</span>':'')+'</div></div>'+bar(avgGrade,wf.color)+'<div style="font-size:11px;color:#8A94A6;margin:4px 0 12px;">'+doneCount+'/'+p.stages.length+' stages complete</div>'+stageRows+'</div>';
   }).join("");
   document.getElementById("tab-projects").innerHTML=html;
@@ -340,16 +428,26 @@ function renderPeople(){
     var done=pl.filter(function(l){return l.grade===5;}).length;
     var avg=total?pl.reduce(function(a,l){return a+l.grade;},0)/total:null;
     var activeProjs=[...new Set(pl.map(function(l){return l.projectId;}))].length;
-
     var bwLabel=activeProjs===0?"Available":activeProjs<=2?"Healthy":activeProjs===3?"At Capacity":"Overloaded";
     var bwBg=activeProjs===0?"#E6F1FB":activeProjs<=2?"#EAF3DE":activeProjs===3?"#FFF3CD":"#FCEBEB";
     var bwFg=activeProjs===0?"#185FA5":activeProjs<=2?"#3B6D11":activeProjs===3?"#856404":"#A32D2D";
-
     var byWF={};
     WF_NAMES.forEach(function(w){
       var wl=pl.filter(function(l){return l.wf===w;});
       if(wl.length)byWF[w]={count:wl.length,avg:wl.reduce(function(a,l){return a+l.grade;},0)/wl.length};
     });
+
+    // Hours analysis
+    var logsWithHrs=pl.filter(function(l){return l.hours&&parseFloat(l.hours)>0;});
+    var dayTotals={};
+    logsWithHrs.forEach(function(l){
+      var key=l.date;
+      dayTotals[key]=(dayTotals[key]||0)+parseFloat(l.hours);
+    });
+    var dayVals=Object.values(dayTotals);
+    var avgHrs=dayVals.length?dayVals.reduce(function(a,v){return a+v;},0)/dayVals.length:null;
+    var underDays=dayVals.filter(function(v){return v<7;}).length;
+    var overDays=dayVals.filter(function(v){return v>9;}).length;
 
     var wfRows=Object.keys(byWF).map(function(w){
       var wf=WORKFLOWS[w];
@@ -358,8 +456,9 @@ function renderPeople(){
 
     var i=Math.max(0,state.people.indexOf(p))%AV_COLORS.length;
     var ini=p.split(" ").map(function(w){return w[0];}).join("").slice(0,2).toUpperCase();
+    var hrsSection=avgHrs!==null?'<div style="margin-top:10px;padding:8px 10px;background:#F5F6FA;border-radius:8px;"><div style="font-size:10px;font-weight:600;color:#8A94A6;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">Hours tracked</div><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;"><span style="font-size:12px;color:#1A1A2E;">Avg <strong>'+avgHrs.toFixed(1)+'h</strong>/day</span>'+(underDays>0?'<span class="hours-flag-bad">'+underDays+' day'+(underDays>1?'s':'')+' under 7h</span>':'')+(overDays>0?'<span class="hours-flag-bad">'+overDays+' day'+(overDays>1?'s':'')+' over 9h</span>':'')+(underDays===0&&overDays===0?'<span class="hours-flag-ok">All days healthy</span>':'')+'</div></div>':'';
 
-    return '<div class="person-card"><div class="person-header"><div class="avatar" style="background:'+AV_COLORS[i]+';color:'+AV_FGS[i]+';width:34px;height:34px;">'+ini+'</div><div style="flex:1"><div style="font-size:13px;font-weight:600;color:#1B2A4A;">'+p+'</div><div style="font-size:11px;color:#8A94A6;">'+activeProjs+' active project'+(activeProjs!==1?"s":"")+'</div></div>'+badge(bwLabel,bwBg,bwFg)+'</div>'+(avg!==null?bar(avg):'')+'<div class="mini-stats"><div class="mini-stat" style="background:#E6F1FB"><div class="mini-stat-label" style="color:#0C447C">Logs</div><div class="mini-stat-val" style="color:#0C447C">'+total+'</div></div><div class="mini-stat" style="background:#FAEEDA"><div class="mini-stat-label" style="color:#854F0B">In prog.</div><div class="mini-stat-val" style="color:#854F0B">'+inProg+'</div></div><div class="mini-stat" style="background:#EAF3DE"><div class="mini-stat-label" style="color:#27500A">Done</div><div class="mini-stat-val" style="color:#27500A">'+done+'</div></div></div>'+(Object.keys(byWF).length?'<div class="wf-breakdown"><div class="wf-breakdown-title">Work type</div>'+wfRows+'</div>':'')+'</div>';
+    return '<div class="person-card"><div class="person-header"><div class="avatar" style="background:'+AV_COLORS[i]+';color:'+AV_FGS[i]+';width:34px;height:34px;">'+ini+'</div><div style="flex:1"><div style="font-size:13px;font-weight:600;color:#1B2A4A;">'+p+'</div><div style="font-size:11px;color:#8A94A6;">'+activeProjs+' active project'+(activeProjs!==1?"s":"")+'</div></div>'+badge(bwLabel,bwBg,bwFg)+'</div>'+(avg!==null?bar(avg):'')+'<div class="mini-stats"><div class="mini-stat" style="background:#E6F1FB"><div class="mini-stat-label" style="color:#0C447C">Logs</div><div class="mini-stat-val" style="color:#0C447C">'+total+'</div></div><div class="mini-stat" style="background:#FAEEDA"><div class="mini-stat-label" style="color:#854F0B">In prog.</div><div class="mini-stat-val" style="color:#854F0B">'+inProg+'</div></div><div class="mini-stat" style="background:#EAF3DE"><div class="mini-stat-label" style="color:#27500A">Done</div><div class="mini-stat-val" style="color:#27500A">'+done+'</div></div></div>'+hrsSection+(Object.keys(byWF).length?'<div class="wf-breakdown"><div class="wf-breakdown-title">Work type</div>'+wfRows+'</div>':'')+'</div>';
   }).join("");
 
   document.getElementById("tab-people").innerHTML='<div class="people-grid">'+cards+'</div><div class="card"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;"><div><div class="card-title" style="margin-bottom:2px">AI Bandwidth & Productivity Analysis</div><div style="font-size:11px;color:#8A94A6;">Analyses patterns, flags overload, estimates future bandwidth</div></div><button class="btn btn-dark" style="height:36px;" onclick="runAnalysis()">'+(state.analysing?"Analysing…":"Analyse team")+'</button></div>'+(state.analysisText?'<div class="analysis-box">'+state.analysisText+'</div>':'<div style="font-size:12px;color:#B4B2A9;font-style:italic;text-align:center;padding:16px 0;">Click "Analyse team" to generate a written AI summary</div>')+'</div>';
@@ -368,7 +467,12 @@ function renderPeople(){
 // ── SETTINGS TAB ──────────────────────────────────────────────────────────────
 function renderSettings(){
   var tags=state.people.map(function(p){
-    return '<span class="tag" style="background:#E6F1FB;color:#0C447C;">'+p+'<button class="tag-x" style="color:#0C447C;" onclick="removePerson(\''+p+'\')">×</button></span>';
+    return '<span class="tag" style="background:#E6F1FB;color:#0C447C;">'+p+'<button class="tag-x" style="color:#0C447C;" onclick="removePerson(\''+p.replace(/'/g,"\\'")+'\')" >×</button></span>';
+  }).join("");
+
+  var projList=state.projects.map(function(p){
+    var wf=WORKFLOWS[p.wf]||{color:"#1B2A4A",light:"#F5F6FA"};
+    return '<div class="proj-mgmt"><div style="display:flex;align-items:center;gap:8px;"><div style="width:8px;height:8px;border-radius:50%;background:'+wf.color+';flex-shrink:0;"></div><div><div style="font-size:12px;font-weight:600;color:#1B2A4A;">'+p.name+'</div><div style="font-size:11px;color:#8A94A6;">'+p.wf+(p.owner?' · '+p.owner:'')+'</div></div></div><button class="btn-danger" onclick="deleteProject(\''+p.id+'\')">Delete</button></div>';
   }).join("");
 
   var wfList=WF_NAMES.map(function(w){
@@ -376,7 +480,14 @@ function renderSettings(){
     return '<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:'+wf.light+';border-radius:8px;margin-bottom:6px;border:0.5px solid '+wf.color+'33;"><div style="width:10px;height:10px;border-radius:50%;background:'+wf.color+';flex-shrink:0;"></div><div><div style="font-size:12px;font-weight:600;color:'+wf.color+';">'+w+'</div><div style="font-size:11px;color:#8A94A6;">'+wf.stages.length+' stages</div></div></div>';
   }).join("");
 
-  document.getElementById("tab-settings").innerHTML='<div class="card"><div class="card-title">Team members</div><div style="font-size:12px;color:#8A94A6;margin-bottom:12px;">Add or remove people. Changes apply immediately.</div><div style="margin-bottom:12px;">'+tags+'</div><div style="display:flex;gap:8px;"><input class="input" id="new-person-input" style="flex:1;" placeholder="Name + Enter to add" onkeydown="if(event.key===\'Enter\')addPerson()"/><button class="btn-primary" style="height:38px;" onclick="addPerson()">Add</button></div></div><div class="card"><div class="card-title">Workflow types (built in)</div>'+wfList+'</div>';
+  document.getElementById("tab-settings").innerHTML='<div class="card"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;"><div class="card-title" style="margin:0">Team members</div><button class="btn btn-dark" style="font-size:11px;" onclick="settingsUnlocked=false;switchTab(\'log\')">🔒 Lock settings</button></div><div style="font-size:12px;color:#8A94A6;margin-bottom:12px;">Add or remove people. Changes apply immediately.</div><div style="margin-bottom:12px;">'+tags+'</div><div style="display:flex;gap:8px;"><input class="input" id="new-person-input" style="flex:1;" placeholder="Name + Enter to add" onkeydown="if(event.key===\'Enter\')addPerson()"/><button class="btn-primary" style="height:38px;" onclick="addPerson()">Add</button></div></div><div class="card"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;"><div class="card-title" style="margin:0">Projects</div></div><div style="font-size:12px;color:#8A94A6;margin-bottom:12px;">Delete a project to remove it and clear it from logs.</div>'+(state.projects.length?projList:'<div style="color:#8A94A6;font-size:13px;font-style:italic;">No projects yet</div>')+'</div><div class="card"><div class="card-title">Workflow types (built in)</div>'+wfList+'</div><div class="card" style="background:#FFF8E6;border-color:#F0D070;"><div style="font-size:12px;font-weight:600;color:#856404;margin-bottom:4px;">🔒 Settings password</div><div style="font-size:12px;color:#8A94A6;">Password: <strong>sort2024</strong> — change this in the code if needed.</div></div>';
+}
+
+function deleteProject(id){
+  if(!confirm("Delete this project? All logs for this project will also be removed."))return;
+  state.projects=state.projects.filter(function(p){return p.id!==id;});
+  state.logs=state.logs.filter(function(l){return l.projectId!==id;});
+  save();
 }
 
 function addPerson(){
@@ -391,9 +502,8 @@ function removePerson(p){
   save();
 }
 
-// ── NEW PROJECT MODAL ─────────────────────────────────────────────────────────
+// ── NEW PROJECT MODAL ──────────────────────────────────────────────────────────
 function openNewProject(){
-  // populate dropdowns
   var wfSel=document.getElementById("np-wf");
   wfSel.innerHTML='<option value="">Select workflow...</option>'+WF_NAMES.map(function(w){return'<option>'+w+'</option>';}).join("");
   var ownerSel=document.getElementById("np-owner");
@@ -418,10 +528,9 @@ function projectStep2(){
   var owner=document.getElementById("np-owner").value;
   var startD=document.getElementById("np-start").value;
   var endD=document.getElementById("np-end").value;
-  if(!name||!wf||!owner||!startD||!endD){alert("Please fill in all fields.");return;}
+  if(!name||!wf||!startD||!endD){alert("Please fill in name, workflow, start and end date.");return;}
   if(endD<=startD){document.getElementById("np-date-err").style.display="block";return;}
   document.getElementById("np-date-err").style.display="none";
-
   var stages=WORKFLOWS[wf].stages;
   var total=daysBetween(startD,endD);
   var perStage=Math.max(1,Math.floor(total/stages.length));
@@ -430,14 +539,11 @@ function projectStep2(){
     return{stage:s,deadline:d};
   });
   if(state.stageDates.length)state.stageDates[state.stageDates.length-1].deadline=endD;
-
   document.getElementById("np-date-info").textContent="Auto-divided from "+fromISO(startD)+" to "+fromISO(endD)+". Edit any deadline below.";
-
   var wfColor=WORKFLOWS[wf].color;
   var html=state.stageDates.map(function(sd,i){
     return '<div class="stage-row" style="background:'+(i%2===0?"#F9FAFB":"#fff")+'"><div class="stage-num" style="background:'+wfColor+'">'+(i+1)+'</div><div class="stage-name">'+sd.stage+'</div><input type="date" value="'+sd.deadline+'" onchange="state.stageDates['+i+'].deadline=this.value" style="width:140px;height:30px;border-radius:6px;border:1px solid #E2E5EF;padding:0 8px;font-size:12px;background:#fff;outline:none;color:#1A1A2E;flex-shrink:0;font-family:inherit;"></div>';
   }).join("");
-
   document.getElementById("np-stages-list").innerHTML=html;
   document.getElementById("modal-project-step1").classList.add("hidden");
   document.getElementById("modal-project-step2").classList.remove("hidden");
@@ -450,32 +556,48 @@ function saveProject(){
   var startD=document.getElementById("np-start").value;
   var endD=document.getElementById("np-end").value;
   var proj={id:"p"+Date.now(),name:name,wf:wf,owner:owner,startDate:startD,endDate:endD,
-    stages:state.stageDates.map(function(sd){return{stage:sd.stage,deadline:sd.deadline,grade:0};})
-  };
+    stages:state.stageDates.map(function(sd){return{stage:sd.stage,deadline:sd.deadline,grade:0};})};
   state.projects.push(proj);
   save();
   closeModal("modal-project");
 }
 
-// ── LOG MODAL ─────────────────────────────────────────────────────────────────
+// ── LOG MODAL ──────────────────────────────────────────────────────────────────
+function onLogPersonChange(){
+  if(!state.editLogId) updateHoursSummary();
+}
+
+function updateHoursSummary(){
+  var name=document.getElementById("log-name").value;
+  var hrsInput=document.getElementById("log-hours");
+  var summaryEl=document.getElementById("log-hours-summary");
+  if(!name){summaryEl.style.display="none";return;}
+  var dateStr=todayStr();
+  var existingHrs=getDailyHours(name,dateStr);
+  var thisHrs=parseFloat(hrsInput.value)||0;
+  var total=existingHrs+thisHrs;
+  if(thisHrs>0||existingHrs>0){
+    summaryEl.style.display="block";
+    summaryEl.innerHTML='<div class="time-summary">Today\'s total for '+name+': <strong style="margin:0 4px;">'+total.toFixed(1)+'h</strong> ('+existingHrs.toFixed(1)+'h logged + '+thisHrs.toFixed(1)+'h this entry) '+hoursFlag(total)+'</div>';
+  } else {
+    summaryEl.style.display="none";
+  }
+}
+
 function openLog(editId){
   state.editLogId=editId;
   state.selectedGrade=null;
-
   var nameSel=document.getElementById("log-name");
   nameSel.innerHTML='<option value="">Select...</option>'+state.people.map(function(p){return'<option>'+p+'</option>';}).join("");
-
   var projSel=document.getElementById("log-proj");
   projSel.innerHTML='<option value="">Select project...</option>'+state.projects.map(function(p){return'<option value="'+p.id+'">'+p.name+'</option>';}).join("");
-
   document.getElementById("log-stage-field").style.display="none";
   document.getElementById("log-wf-badge").style.display="none";
   document.getElementById("log-notes").value="";
+  document.getElementById("log-hours").value="";
+  document.getElementById("log-hours-summary").style.display="none";
   document.getElementById("log-err").style.display="none";
-
-  // reset grade buttons
   document.querySelectorAll(".grade-btn").forEach(function(b){b.className="grade-btn";});
-
   if(editId){
     var entry=state.logs.find(function(l){return l.id===editId;});
     if(entry){
@@ -485,12 +607,12 @@ function openLog(editId){
       setTimeout(function(){ document.getElementById("log-stage").value=entry.stage; },10);
       setGrade(entry.grade);
       document.getElementById("log-notes").value=entry.notes||"";
+      document.getElementById("log-hours").value=entry.hours||"";
     }
     document.getElementById("modal-log-title").textContent="Edit Entry";
   } else {
     document.getElementById("modal-log-title").textContent="Today's Log";
   }
-
   document.getElementById("modal-log").classList.remove("hidden");
 }
 
@@ -498,27 +620,25 @@ function onLogProjChange(){
   var projId=document.getElementById("log-proj").value;
   var proj=state.projects.find(function(p){return p.id===projId;});
   var stageFld=document.getElementById("log-stage-field");
-  var wfBadge=document.getElementById("log-wf-badge");
+  var wfBadgeEl=document.getElementById("log-wf-badge");
   if(proj){
     var stageSel=document.getElementById("log-stage");
     stageSel.innerHTML='<option value="">Select stage...</option>'+proj.stages.map(function(s){return'<option>'+s.stage+'</option>';}).join("");
     stageFld.style.display="block";
     var wf=WORKFLOWS[proj.wf];
     if(wf){
-      wfBadge.innerHTML='<span style="background:'+wf.light+';color:'+wf.color+';padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;">'+proj.wf+'</span>';
-      wfBadge.style.display="block";
+      wfBadgeEl.innerHTML='<span style="background:'+wf.light+';color:'+wf.color+';padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;">'+proj.wf+'</span>';
+      wfBadgeEl.style.display="block";
     }
   } else {
     stageFld.style.display="none";
-    wfBadge.style.display="none";
+    wfBadgeEl.style.display="none";
   }
 }
 
 function setGrade(g){
   state.selectedGrade=g;
-  document.querySelectorAll(".grade-btn").forEach(function(b,i){
-    b.className="grade-btn"+(i===g?" sel-"+g:"");
-  });
+  document.querySelectorAll(".grade-btn").forEach(function(b,i){b.className="grade-btn"+(i===g?" sel-"+g:"");});
 }
 
 function saveLog(){
@@ -526,91 +646,76 @@ function saveLog(){
   var projId=document.getElementById("log-proj").value;
   var stage=document.getElementById("log-stage").value;
   var notes=document.getElementById("log-notes").value;
+  var hours=document.getElementById("log-hours").value;
   var errEl=document.getElementById("log-err");
-
-  if(!name||!projId||!stage||state.selectedGrade===null){
-    errEl.style.display="block";return;
-  }
+  if(!name||!projId||!stage||state.selectedGrade===null){errEl.style.display="block";return;}
   errEl.style.display="none";
-
   var proj=state.projects.find(function(p){return p.id===projId;});
   var entry={
     id:state.editLogId||"l"+Date.now(),
-    date:fmtDate(),
+    date:state.editLogId?(state.logs.find(function(l){return l.id===state.editLogId;})||{}).date||fmtDate():fmtDate(),
     name:name,projectId:projId,
     projectName:proj?proj.name:"",
     wf:proj?proj.wf:"",
-    stage:stage,grade:state.selectedGrade,notes:notes
+    stage:stage,grade:state.selectedGrade,
+    notes:notes,
+    hours:hours?parseFloat(hours):null
   };
-
-  // update project stage grade
   state.projects=state.projects.map(function(p){
     if(p.id!==projId)return p;
     return Object.assign({},p,{stages:p.stages.map(function(s){return s.stage===stage?Object.assign({},s,{grade:state.selectedGrade}):s;})});
   });
-
   if(state.editLogId){
     state.logs=state.logs.map(function(l){return l.id===state.editLogId?entry:l;});
   } else {
     state.logs.unshift(entry);
   }
-
   save();
   closeModal("modal-log");
 }
 
-// ── AI Analysis ───────────────────────────────────────────────────────────────
+// ── AI Analysis ────────────────────────────────────────────────────────────────
 function runAnalysis(){
   if(state.analysing)return;
   state.analysing=true;
   renderPeople();
-
   var summary=state.people.map(function(p){
     var pl=state.logs.filter(function(l){return l.name===p;});
     var avg=pl.length?pl.reduce(function(a,l){return a+l.grade;},0)/pl.length:0;
     var activeProjs=[...new Set(pl.map(function(l){return l.projectId;}))].length;
+    var dayTotals={};
+    pl.filter(function(l){return l.hours;}).forEach(function(l){dayTotals[l.date]=(dayTotals[l.date]||0)+parseFloat(l.hours);});
+    var dayVals=Object.values(dayTotals);
+    var avgHrs=dayVals.length?dayVals.reduce(function(a,v){return a+v;},0)/dayVals.length:null;
     var byWF={};
-    WF_NAMES.forEach(function(w){
-      var wl=pl.filter(function(l){return l.wf===w;});
-      if(wl.length)byWF[w]=(wl.reduce(function(a,l){return a+l.grade;},0)/wl.length).toFixed(1);
-    });
-    return p+": "+pl.length+" logs, avg "+avg.toFixed(1)+", active projects: "+activeProjs+". By type: "+Object.keys(byWF).map(function(w){return w+"("+byWF[w]+")";}).join(", ");
+    WF_NAMES.forEach(function(w){var wl=pl.filter(function(l){return l.wf===w;});if(wl.length)byWF[w]=(wl.reduce(function(a,l){return a+l.grade;},0)/wl.length).toFixed(1);});
+    return p+": "+pl.length+" logs, avg grade "+avg.toFixed(1)+", active projects: "+activeProjs+(avgHrs?", avg "+avgHrs.toFixed(1)+"h/day":"")+". By workflow: "+Object.keys(byWF).map(function(w){return w+"("+byWF[w]+")";}).join(", ");
   }).join("\n");
-
   var projSummary=state.projects.map(function(p){
     var avg=p.stages.reduce(function(a,s){return a+s.grade;},0)/p.stages.length;
     var done=p.stages.filter(function(s){return s.grade===5;}).length;
     return p.name+" ["+p.wf+"]: status="+calcStatus(p)+", avg="+avg.toFixed(1)+", stages "+done+"/"+p.stages.length;
   }).join("\n");
-
   fetch("https://api.anthropic.com/v1/messages",{
     method:"POST",
     headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({
-      model:"claude-sonnet-4-20250514",
-      max_tokens:1000,
-      messages:[{role:"user",content:"You are a team performance analyst. Give a concise analysis (3-4 paragraphs) covering: (1) who is overloaded vs has bandwidth, (2) work speed patterns by activity type, (3) project health and where time is being lost, (4) recommendations.\n\nPeople:\n"+summary+"\n\nProjects:\n"+projSummary}]
-    })
+    body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,messages:[{role:"user",content:"You are a team performance analyst for a strategy and content agency. Give a concise analysis (3-4 paragraphs) covering: (1) who is overloaded vs has bandwidth, (2) work speed patterns by activity type, (3) project health and where time is being lost, (4) hours patterns - flag anyone consistently under 7h or over 9h, (5) recommendations.\n\nPeople:\n"+summary+"\n\nProjects:\n"+projSummary}]})
   }).then(function(r){return r.json();}).then(function(d){
     state.analysisText=(d.content&&d.content[0]&&d.content[0].text)||"No analysis returned.";
     state.analysing=false;
     renderPeople();
-  }).catch(function(e){
+  }).catch(function(){
     state.analysisText="Could not load analysis. Please try again.";
     state.analysing=false;
     renderPeople();
   });
 }
 
-// ── Modal helpers ─────────────────────────────────────────────────────────────
-function closeModal(id){
-  document.getElementById(id).classList.add("hidden");
-}
+function closeModal(id){ document.getElementById(id).classList.add("hidden"); }
 document.querySelectorAll(".modal-overlay").forEach(function(el){
   el.addEventListener("click",function(e){if(e.target===el)el.classList.add("hidden");});
 });
 
-// ── Init ──────────────────────────────────────────────────────────────────────
 updateStats();
 switchTab("log");
 </script>
