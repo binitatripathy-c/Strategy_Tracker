@@ -17,13 +17,14 @@
 <body>
   <div id="root"></div>
   <script type="text/babel" data-presets="react">
-    const { useState } = React;
+    const { useState, useEffect, useCallback } = React;
 
-    function lsGet(k){try{return JSON.parse(localStorage.getItem(k));}catch(e){return null;}}
-    function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+    // ── localStorage persistence (works everywhere, shared via URL copy-paste) ──
+    function lsGet(key) { try { return JSON.parse(localStorage.getItem(key)); } catch(e) { return null; } }
+    function lsSet(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch(e) {} }
 
-    const DEF_PEOPLE   = ["Person 1","Person 2","Person 3","Person 4","Person 5","Person 6"];
-    const DEF_PROJECTS = ["Project A","Project B","Project C","Project D","Project E","Project F","Project G","Project H","Project I","Project J"];
+    const DEFAULT_PEOPLE = ["Person 1","Person 2","Person 3","Person 4","Person 5","Person 6"];
+    const DEFAULT_PROJECTS = ["Project A","Project B","Project C","Project D","Project E","Project F","Project G","Project H","Project I","Project J"];
     const STAGES = ["MSA & Advance","Brief Doc","Briefing Call","3C","Strategy Deck","Strategy Presentation","Handover to Content","Content Strategy","Refinement","Presentation"];
 
     const SEED = [
@@ -42,308 +43,255 @@
     function fmtDate(d=new Date()){
       return d.getDate()+"-"+["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getMonth()]+"-"+String(d.getFullYear()).slice(2);
     }
-    function gc(g){
-      if(g===5)return{bg:"#C0DD97",fg:"#27500A"};
-      if(g>=3) return{bg:"#EAF3DE",fg:"#3B6D11"};
-      if(g>=1) return{bg:"#FAEEDA",fg:"#854F0B"};
-      return{bg:"#FCEBEB",fg:"#A32D2D"};
+    function gradeColor(g){
+      if(g===5) return {bg:"#C0DD97",fg:"#27500A"};
+      if(g>=3)  return {bg:"#EAF3DE",fg:"#3B6D11"};
+      if(g>=1)  return {bg:"#FAEEDA",fg:"#854F0B"};
+      return {bg:"#FCEBEB",fg:"#A32D2D"};
     }
-    function sb(avg){
-      if(avg===null)return{label:"No data",bg:"#F1EFE8",fg:"#5F5E5A"};
-      if(avg>=4.8)  return{label:"Done",bg:"#C0DD97",fg:"#27500A"};
-      if(avg>=3)    return{label:"On Track",bg:"#EAF3DE",fg:"#3B6D11"};
-      if(avg>=1)    return{label:"In Progress",bg:"#FAEEDA",fg:"#854F0B"};
-      return{label:"Just Started",bg:"#FCEBEB",fg:"#A32D2D"};
+    function statusBadge(avg){
+      if(avg===null) return {label:"No data",bg:"#F1EFE8",fg:"#5F5E5A"};
+      if(avg>=4.8)   return {label:"Done",bg:"#C0DD97",fg:"#27500A"};
+      if(avg>=3)     return {label:"On Track",bg:"#EAF3DE",fg:"#3B6D11"};
+      if(avg>=1)     return {label:"In Progress",bg:"#FAEEDA",fg:"#854F0B"};
+      return {label:"Just Started",bg:"#FCEBEB",fg:"#A32D2D"};
     }
-    function bw(n){
-      if(n===0) return{label:"Available",bg:"#E6F1FB",fg:"#185FA5"};
-      if(n<=2)  return{label:"Healthy",bg:"#EAF3DE",fg:"#3B6D11"};
-      if(n===3) return{label:"At Capacity",bg:"#FAEEDA",fg:"#854F0B"};
-      return{label:"Overloaded",bg:"#FCEBEB",fg:"#A32D2D"};
+    function bwBadge(inProg){
+      if(inProg===0)  return {label:"Available",bg:"#E6F1FB",fg:"#185FA5"};
+      if(inProg<=2)   return {label:"Healthy",bg:"#EAF3DE",fg:"#3B6D11"};
+      if(inProg===3)  return {label:"At Capacity",bg:"#FAEEDA",fg:"#854F0B"};
+      return {label:"Overloaded",bg:"#FCEBEB",fg:"#A32D2D"};
     }
-
-    const E = React.createElement;
-
     function Badge({label,bg,fg}){
-      return E('span',{style:{background:bg,color:fg,padding:"3px 10px",borderRadius:20,fontSize:11,fontWeight:600,whiteSpace:"nowrap"}},label);
+      return React.createElement('span',{style:{background:bg,color:fg,padding:"3px 10px",borderRadius:20,fontSize:11,fontWeight:600,whiteSpace:"nowrap"}},label);
     }
-    function Pill({grade}){
-      const{bg,fg}=gc(grade);
-      return E('span',{style:{display:"inline-flex",alignItems:"center",justifyContent:"center",width:26,height:26,borderRadius:"50%",background:bg,color:fg,fontWeight:700,fontSize:12}},grade);
+    function GradePill({grade}){
+      const {bg,fg}=gradeColor(grade);
+      return React.createElement('span',{style:{display:"inline-flex",alignItems:"center",justifyContent:"center",width:26,height:26,borderRadius:"50%",background:bg,color:fg,fontWeight:700,fontSize:12}},grade);
     }
-    function Av({name,people}){
-      const ini=name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
-      const cs=["#E6F1FB","#EAF3DE","#FAEEDA","#FCEBEB","#EEEDFE","#F1EFE8","#E1F5EE","#FBEAF0"];
-      const fs=["#0C447C","#27500A","#633806","#791F1F","#3C3489","#444441","#085041","#72243E"];
-      const i=Math.max(0,(people||DEF_PEOPLE).indexOf(name))%cs.length;
-      return E('div',{style:{width:32,height:32,borderRadius:"50%",background:cs[i],color:fs[i],display:"flex",alignItems:"center",justifyContent:"center",fontWeight:600,fontSize:12,flexShrink:0}},ini);
+    function Avatar({name,people}){
+      const initials=name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
+      const cols=["#E6F1FB","#EAF3DE","#FAEEDA","#FCEBEB","#EEEDFE","#F1EFE8","#E1F5EE","#FBEAF0"];
+      const fgs=["#0C447C","#27500A","#633806","#791F1F","#3C3489","#444441","#085041","#72243E"];
+      const idx=Math.max(0,(people||DEFAULT_PEOPLE).indexOf(name))%cols.length;
+      return React.createElement('div',{style:{width:32,height:32,borderRadius:"50%",background:cols[idx],color:fgs[idx],display:"flex",alignItems:"center",justifyContent:"center",fontWeight:600,fontSize:12,flexShrink:0}},initials);
     }
-    function Bar({value}){
+    function ProgressBar({value}){
       const pct=Math.round((value/5)*100);
-      const{bg}=gc(Math.round(value));
-      return E('div',{style:{display:"flex",alignItems:"center",gap:8}},
-        E('div',{style:{flex:1,height:6,borderRadius:3,background:"#F1EFE8",overflow:"hidden"}},
-          E('div',{style:{height:"100%",width:pct+"%",background:bg,borderRadius:3,transition:"width 0.4s"}})
+      const {bg}=gradeColor(Math.round(value));
+      return React.createElement('div',{style:{display:"flex",alignItems:"center",gap:8}},
+        React.createElement('div',{style:{flex:1,height:6,borderRadius:3,background:"#F1EFE8",overflow:"hidden"}},
+          React.createElement('div',{style:{height:"100%",width:pct+"%",background:bg,borderRadius:3,transition:"width 0.4s"}})
         ),
-        E('span',{style:{fontSize:11,fontWeight:600,color:"#5F5E5A",minWidth:30,textAlign:"right"}},pct+"%")
+        React.createElement('span',{style:{fontSize:11,fontWeight:600,color:"#5F5E5A",minWidth:30,textAlign:"right"}},pct+"%")
       );
     }
 
     function App(){
-      const [tab,setTab]   = useState("log");
-      const [entries,setEnt] = useState(()=>lsGet("trk_e")||SEED);
-      const [people,setPpl]  = useState(()=>lsGet("trk_p")||DEF_PEOPLE);
-      const [projs,setPrj]   = useState(()=>lsGet("trk_pr")||DEF_PROJECTS);
-      const [saved,setSaved] = useState(false);
-      const [sSaved,setSSaved] = useState(false);
+      const [tab,setTab]=useState("log");
+      const [entries,setEntries]=useState(()=>lsGet("trk_entries")||SEED);
+      const [people,setPeople]=useState(()=>lsGet("trk_people")||DEFAULT_PEOPLE);
+      const [projects,setProjects]=useState(()=>lsGet("trk_projects")||DEFAULT_PROJECTS);
+      const [saved,setSaved]=useState(false);
+      const [settingsSaved,setSettingsSaved]=useState(false);
+      const [name,setName]=useState("");
+      const [project,setProject]=useState("");
+      const [stage,setStage]=useState("");
+      const [grade,setGrade]=useState(null);
+      const [filterPerson,setFilterPerson]=useState("All");
+      const [filterProject,setFilterProject]=useState("All");
+      const [editPeople,setEditPeople]=useState(()=>lsGet("trk_people")||DEFAULT_PEOPLE);
+      const [editProjects,setEditProjects]=useState(()=>lsGet("trk_projects")||DEFAULT_PROJECTS);
+      const [newPerson,setNewPerson]=useState("");
+      const [newProject,setNewProject]=useState("");
 
-      // log form
-      const [nm,setNm]=useState(""); const [pj,setPj]=useState("");
-      const [st,setSt]=useState(""); const [gr,setGr]=useState(null);
-      const [fPerson,setFP]=useState("All"); const [fProj,setFPr]=useState("All");
-
-      // settings edit
-      const [ePpl,setEPpl]   = useState(()=>lsGet("trk_p")||DEF_PEOPLE);
-      const [ePrj,setEPrj]   = useState(()=>lsGet("trk_pr")||DEF_PROJECTS);
-      const [nPpl,setNPpl]   = useState(""); const [nPrj,setNPrj]=useState("");
-
-      // edit row state
-      const [editing,setEditing] = useState(null); // entry id being edited
-      const [editVals,setEditVals] = useState({});
-
-      function saveLog(){
-        if(!nm||!pj||!st||gr===null)return;
-        const next=[{id:"e"+Date.now(),date:fmtDate(),name:nm,project:pj,stage:st,grade:gr},...entries];
-        setEnt(next);lsSet("trk_e",next);
-        setSaved(true);setTimeout(()=>setSaved(false),2000);
-        setNm("");setPj("");setSt("");setGr(null);
-      }
-      function deleteEntry(id){
-        if(!window.confirm("Delete this entry?"))return;
-        const next=entries.filter(e=>e.id!==id);setEnt(next);lsSet("trk_e",next);
-      }
-      function startEdit(e){
-        setEditing(e.id);
-        setEditVals({name:e.name,project:e.project,stage:e.stage,grade:e.grade});
-      }
-      function saveEdit(id){
-        const next=entries.map(e=>e.id===id?{...e,...editVals,grade:Number(editVals.grade)}:e);
-        setEnt(next);lsSet("trk_e",next);setEditing(null);
+      function submitLog(){
+        if(!name||!project||!stage||grade===null)return;
+        const entry={id:"e"+Date.now(),date:fmtDate(),name,project,stage,grade};
+        const next=[entry,...entries];
+        setEntries(next); lsSet("trk_entries",next);
+        setSaved(true); setTimeout(()=>setSaved(false),2000);
+        setName("");setProject("");setStage("");setGrade(null);
       }
       function saveSettings(){
-        const p=ePpl.filter(Boolean),pr=ePrj.filter(Boolean);
-        setPpl(p);setPrj(pr);lsSet("trk_p",p);lsSet("trk_pr",pr);
-        setSSaved(true);setTimeout(()=>setSSaved(false),2000);
+        const p=editPeople.filter(Boolean),pr=editProjects.filter(Boolean);
+        setPeople(p);setProjects(pr);
+        lsSet("trk_people",p);lsSet("trk_projects",pr);
+        setSettingsSaved(true);setTimeout(()=>setSettingsSaved(false),2000);
       }
-      function addPpl(){const t=nPpl.trim();if(!t||ePpl.includes(t))return;setEPpl(ep=>[...ep,t]);setNPpl("");}
-      function addPrj(){const t=nPrj.trim();if(!t||ePrj.includes(t))return;setEPrj(ep=>[...ep,t]);setNPrj("");}
+      function addPerson(){const t=newPerson.trim();if(!t||editPeople.includes(t))return;setEditPeople(ep=>[...ep,t]);setNewPerson("");}
+      function addProject(){const t=newProject.trim();if(!t||editProjects.includes(t))return;setEditProjects(ep=>[...ep,t]);setNewProject("");}
 
-      const ready=nm&&pj&&st&&gr!==null;
-      const fLog=entries.filter(e=>(fPerson==="All"||e.name===fPerson)&&(fProj==="All"||e.project===fProj));
-      const actP=projs.filter(p=>entries.find(e=>e.project===p));
-      const noP =projs.filter(p=>!entries.find(e=>e.project===p));
-      const pStats=actP.map(p=>{
+      const ready=name&&project&&stage&&grade!==null;
+      const filteredLog=entries.filter(e=>(filterPerson==="All"||e.name===filterPerson)&&(filterProject==="All"||e.project===filterProject));
+      const activeProjects=projects.filter(p=>entries.find(e=>e.project===p));
+      const noDataProjects=projects.filter(p=>!entries.find(e=>e.project===p));
+      const projectStats=activeProjects.map(p=>{
         const pe=entries.filter(e=>e.project===p);
         const avg=pe.reduce((a,e)=>a+e.grade,0)/pe.length;
         return{project:p,avg,lastDate:pe[0].date,lastStage:pe[0].stage,lastGrade:pe[0].grade,team:[...new Set(pe.map(e=>e.name))]};
       });
-      const peStats=people.map(p=>{
+      const peopleStats=people.map(p=>{
         const pe=entries.filter(e=>e.name===p);
-        const total=pe.length,ip=pe.filter(e=>e.grade>0&&e.grade<5).length,dn=pe.filter(e=>e.grade===5).length;
-        return{name:p,total,ip,dn,avg:total?pe.reduce((a,e)=>a+e.grade,0)/total:null,prjs:[...new Set(pe.map(e=>e.project))]};
+        const total=pe.length,inProg=pe.filter(e=>e.grade>0&&e.grade<5).length,done=pe.filter(e=>e.grade===5).length;
+        const avg=total?pe.reduce((a,e)=>a+e.grade,0)/total:null;
+        return{name:p,total,inProg,done,avg,prjs:[...new Set(pe.map(e=>e.project))]};
       });
 
-      // helpers
-      const sel=(val,fn,opts,ph)=>E('select',{value:val,onChange:e=>fn(e.target.value),style:{width:"100%",height:40,borderRadius:8,border:"1px solid #E2E5EF",padding:"0 12px",fontSize:13,color:val?"#1A1A2E":"#8A94A6",background:"#F5F6FA",outline:"none"}},
-        E('option',{value:""},ph||"Select..."),
-        ...opts.map(o=>E('option',{key:o},o))
+      const dd=(value,onChange,options,placeholder)=>React.createElement('select',{value,onChange:e=>onChange(e.target.value),style:{width:"100%",height:40,borderRadius:8,border:"1px solid #E2E5EF",padding:"0 12px",fontSize:13,color:value?"#1A1A2E":"#8A94A6",background:"#F5F6FA",outline:"none"}},
+        React.createElement('option',{value:""},placeholder||"Select..."),
+        ...options.map(o=>React.createElement('option',{key:o},o))
       );
-      const lbl=t=>E('div',{style:{fontSize:11,fontWeight:600,color:"#8A94A6",textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:6}},t);
-      const card=(ch,xtra={})=>E('div',{style:{background:"#fff",borderRadius:12,border:"0.5px solid #E2E5EF",padding:20,marginBottom:16,...xtra}},ch);
+      const lbl=(text)=>React.createElement('div',{style:{fontSize:11,fontWeight:600,color:"#8A94A6",textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:6}},text);
+      const card=(children,extra={})=>React.createElement('div',{style:{background:"#fff",borderRadius:12,border:"0.5px solid #E2E5EF",padding:20,marginBottom:16,...extra}},children);
 
-      const TABS=[["log","Log"],["projects","Projects"],["people","People"],["settings","Settings"]];
+      return React.createElement('div',{style:{fontFamily:"'DM Sans',system-ui,sans-serif",color:"#1A1A2E",minHeight:"100vh",background:"#F5F6FA"}},
 
-      return E('div',{style:{fontFamily:"'DM Sans',system-ui,sans-serif",color:"#1A1A2E",minHeight:"100vh",background:"#F5F6FA"}},
-
-        // topbar
-        E('div',{style:{background:"#1B2A4A",padding:"0 20px",display:"flex",alignItems:"center",height:52,gap:10}},
-          E('div',{style:{width:8,height:8,borderRadius:"50%",background:"#C0DD97"}}),
-          E('span',{style:{fontSize:15,fontWeight:600,color:"#fff"}},"Strategy Tracker"),
-          E('span',{style:{fontSize:11,color:"rgba(255,255,255,0.35)"}},"team workspace"),
-          (saved||sSaved)&&E('span',{style:{marginLeft:"auto",fontSize:11,color:"#C0DD97",fontWeight:500}},"Saved")
+        // Top bar
+        React.createElement('div',{style:{background:"#1B2A4A",padding:"0 20px",display:"flex",alignItems:"center",height:52,gap:10}},
+          React.createElement('div',{style:{width:8,height:8,borderRadius:"50%",background:"#C0DD97"}}),
+          React.createElement('span',{style:{fontSize:15,fontWeight:600,color:"#fff"}},"Strategy Tracker"),
+          React.createElement('span',{style:{fontSize:11,color:"rgba(255,255,255,0.35)"}},"team workspace"),
+          (saved||settingsSaved)&&React.createElement('span',{style:{marginLeft:"auto",fontSize:11,color:"#C0DD97",fontWeight:500}},"Saved")
         ),
 
-        // tabs
-        E('div',{style:{background:"#fff",borderBottom:"0.5px solid #E2E5EF",display:"flex",padding:"0 16px"}},
-          ...TABS.map(([t,l])=>E('button',{key:t,onClick:()=>setTab(t),style:{padding:"12px 16px",fontSize:13,fontWeight:500,cursor:"pointer",background:"none",border:"none",borderBottom:tab===t?"2px solid #0B6E6E":"2px solid transparent",color:tab===t?"#0B6E6E":"#8A94A6"}},l))
+        // Tabs
+        React.createElement('div',{style:{background:"#fff",borderBottom:"0.5px solid #E2E5EF",display:"flex",padding:"0 16px"}},
+          ...["log","projects","people","settings"].map((t,i)=>
+            React.createElement('button',{key:t,onClick:()=>setTab(t),style:{padding:"12px 16px",fontSize:13,fontWeight:500,cursor:"pointer",background:"none",border:"none",borderBottom:tab===t?"2px solid #0B6E6E":"2px solid transparent",color:tab===t?"#0B6E6E":"#8A94A6"}},
+              ["Log","Projects","People","Settings"][i]
+            )
+          )
         ),
 
-        E('div',{style:{maxWidth:780,margin:"0 auto",padding:"20px 16px"}},
+        React.createElement('div',{style:{maxWidth:780,margin:"0 auto",padding:"20px 16px"}},
 
-          // stats strip
-          E('div',{style:{display:"grid",gridTemplateColumns:"repeat(4,minmax(0,1fr))",gap:10,marginBottom:20}},
-            ...[["Total logs",entries.length],["People",people.length],["Projects",projs.length],["Stages done",entries.filter(e=>e.grade===5).length]].map(([l,v])=>
-              E('div',{key:l,style:{background:"#fff",borderRadius:10,border:"0.5px solid #E2E5EF",padding:"12px 14px"}},
-                E('div',{style:{fontSize:11,fontWeight:600,color:"#8A94A6",textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:4}},l),
-                E('div',{style:{fontSize:22,fontWeight:600,color:"#1B2A4A"}},v)
+          // Stats
+          React.createElement('div',{style:{display:"grid",gridTemplateColumns:"repeat(4,minmax(0,1fr))",gap:10,marginBottom:20}},
+            ...[["Total logs",entries.length],["People",people.length],["Projects",projects.length],["Stages done",entries.filter(e=>e.grade===5).length]].map(([l,v])=>
+              React.createElement('div',{key:l,style:{background:"#fff",borderRadius:10,border:"0.5px solid #E2E5EF",padding:"12px 14px"}},
+                React.createElement('div',{style:{fontSize:11,fontWeight:600,color:"#8A94A6",textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:4}},l),
+                React.createElement('div',{style:{fontSize:22,fontWeight:600,color:"#1B2A4A"}},v)
               )
             )
           ),
 
-          // ── LOG TAB ──
-          tab==="log"&&E(React.Fragment,null,
-            card(E(React.Fragment,null,
-              E('div',{style:{fontSize:13,fontWeight:600,color:"#1B2A4A",marginBottom:16}},"Today's update"),
-              E('div',{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}},
-                E('div',null,lbl("Your name"),sel(nm,setNm,people)),
-                E('div',null,lbl("Project"),sel(pj,setPj,projs))
+          // LOG TAB
+          tab==="log"&&React.createElement(React.Fragment,null,
+            card(React.createElement(React.Fragment,null,
+              React.createElement('div',{style:{fontSize:13,fontWeight:600,color:"#1B2A4A",marginBottom:16}},"Today's update"),
+              React.createElement('div',{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}},
+                React.createElement('div',null,lbl("Your name"),dd(name,setName,people,"Select...")),
+                React.createElement('div',null,lbl("Project"),dd(project,setProject,projects,"Select..."))
               ),
-              E('div',{style:{marginBottom:14}},lbl("Stage"),sel(st,setSt,STAGES)),
-              E('div',{style:{marginBottom:16}},
+              React.createElement('div',{style:{marginBottom:14}},lbl("Stage"),dd(stage,setStage,STAGES,"Select...")),
+              React.createElement('div',{style:{marginBottom:16}},
                 lbl("Grade"),
-                E('div',{style:{display:"flex",gap:8}},
+                React.createElement('div',{style:{display:"flex",gap:8}},
                   ...[0,1,2,3,4,5].map(g=>{
-                    const s=gr===g;const{bg,fg}=gc(g);
-                    return E('button',{key:g,onClick:()=>setGr(g),style:{width:42,height:42,borderRadius:8,border:s?"2px solid "+fg:"1.5px solid #E2E5EF",background:s?bg:"#F5F6FA",color:s?fg:"#8A94A6",fontWeight:700,fontSize:14,cursor:"pointer",flexShrink:0}},g);
+                    const sel=grade===g;const{bg,fg}=gradeColor(g);
+                    return React.createElement('button',{key:g,onClick:()=>setGrade(g),style:{width:42,height:42,borderRadius:8,border:sel?"2px solid "+fg:"1.5px solid #E2E5EF",background:sel?bg:"#F5F6FA",color:sel?fg:"#8A94A6",fontWeight:700,fontSize:14,cursor:"pointer",flexShrink:0}},g);
                   })
                 ),
-                E('div',{style:{display:"flex",gap:6,marginTop:8,flexWrap:"wrap"}},
+                React.createElement('div',{style:{display:"flex",gap:6,marginTop:8,flexWrap:"wrap"}},
                   ...["0=Not started","1=20%","2=40%","3=60%","4=80%","5=Done"].map(s=>
-                    E('span',{key:s,style:{fontSize:10,color:"#8A94A6",background:"#F5F6FA",borderRadius:4,padding:"2px 6px"}},s.replace("="," = "))
+                    React.createElement('span',{key:s,style:{fontSize:10,color:"#8A94A6",background:"#F5F6FA",borderRadius:4,padding:"2px 6px"}},s.replace("="," = "))
                   )
                 )
               ),
-              E('div',{style:{display:"flex",alignItems:"center",gap:12}},
-                E('button',{onClick:saveLog,disabled:!ready,style:{height:40,padding:"0 24px",borderRadius:8,border:"none",background:ready?"#1B2A4A":"#D3D1C7",color:"#fff",fontSize:13,fontWeight:600,cursor:ready?"pointer":"not-allowed"}},"Log it"),
-                saved&&E('span',{style:{fontSize:12,color:"#0B6E6E",fontWeight:500}},"Saved")
+              React.createElement('div',{style:{display:"flex",alignItems:"center",gap:12}},
+                React.createElement('button',{onClick:submitLog,disabled:!ready,style:{height:40,padding:"0 24px",borderRadius:8,border:"none",background:ready?"#1B2A4A":"#D3D1C7",color:"#fff",fontSize:13,fontWeight:600,cursor:ready?"pointer":"not-allowed"}},"Log it"),
+                saved&&React.createElement('span',{style:{fontSize:12,color:"#0B6E6E",fontWeight:500}},"Saved")
               )
             )),
 
-            card(E(React.Fragment,null,
-              E('div',{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,flexWrap:"wrap",gap:8}},
-                E('div',{style:{fontSize:13,fontWeight:600,color:"#1B2A4A"}},"Recent entries"),
-                E('div',{style:{display:"flex",gap:8}},
-                  E('select',{value:fPerson,onChange:e=>setFP(e.target.value),style:{height:32,borderRadius:6,border:"0.5px solid #E2E5EF",padding:"0 8px",fontSize:12,background:"#F5F6FA",outline:"none",color:"#1A1A2E"}},
-                    E('option',null,"All"),...people.map(p=>E('option',{key:p},p))
+            card(React.createElement(React.Fragment,null,
+              React.createElement('div',{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,flexWrap:"wrap",gap:8}},
+                React.createElement('div',{style:{fontSize:13,fontWeight:600,color:"#1B2A4A"}},"Recent entries"),
+                React.createElement('div',{style:{display:"flex",gap:8}},
+                  React.createElement('select',{value:filterPerson,onChange:e=>setFilterPerson(e.target.value),style:{height:32,borderRadius:6,border:"0.5px solid #E2E5EF",padding:"0 8px",fontSize:12,background:"#F5F6FA",outline:"none",color:"#1A1A2E"}},
+                    React.createElement('option',null,"All"),...people.map(p=>React.createElement('option',{key:p},p))
                   ),
-                  E('select',{value:fProj,onChange:e=>setFPr(e.target.value),style:{height:32,borderRadius:6,border:"0.5px solid #E2E5EF",padding:"0 8px",fontSize:12,background:"#F5F6FA",outline:"none",color:"#1A1A2E"}},
-                    E('option',null,"All"),...projs.map(p=>E('option',{key:p},p))
+                  React.createElement('select',{value:filterProject,onChange:e=>setFilterProject(e.target.value),style:{height:32,borderRadius:6,border:"0.5px solid #E2E5EF",padding:"0 8px",fontSize:12,background:"#F5F6FA",outline:"none",color:"#1A1A2E"}},
+                    React.createElement('option',null,"All"),...projects.map(p=>React.createElement('option',{key:p},p))
                   )
                 )
               ),
-              fLog.length===0
-                ?E('div',{style:{textAlign:"center",padding:32,color:"#8A94A6",fontSize:13}},"No entries yet")
-                :E('div',{style:{overflowX:"auto"}},
-                  E('table',{style:{width:"100%",borderCollapse:"collapse",fontSize:12}},
-                    E('thead',null,E('tr',{style:{background:"#0B6E6E"}},
-                      ...["Date","Name","Project","Stage","Grade","Edit","Del"].map((h,i)=>
-                        E('th',{key:h,style:{padding:"8px 10px",textAlign:["Grade","Edit","Del"].includes(h)?"center":"left",color:"#fff",fontWeight:600,fontSize:11,width:[80,100,100,140,55,55,45][i]}},h)
+              filteredLog.length===0
+                ?React.createElement('div',{style:{textAlign:"center",padding:32,color:"#8A94A6",fontSize:13}},"No entries yet")
+                :React.createElement('div',{style:{overflowX:"auto"}},
+                  React.createElement('table',{style:{width:"100%",borderCollapse:"collapse",fontSize:12,tableLayout:"fixed"}},
+                    React.createElement('thead',null,React.createElement('tr',{style:{background:"#0B6E6E"}},
+                      ...["Date","Name","Project","Stage","Grade"].map((h,i)=>
+                        React.createElement('th',{key:h,style:{padding:"8px 10px",textAlign:h==="Grade"?"center":"left",color:"#fff",fontWeight:600,fontSize:11,width:[80,110,110,160,60][i]}},h)
                       )
                     )),
-                    E('tbody',null,
-                      ...fLog.slice(0,50).map((e,i)=>{
-                        const isEd=editing===e.id;
-                        const rb=i%2===0?"#F5F6FA":"#fff";
-                        if(isEd){
-                          // edit row
-                          return E('tr',{key:e.id,style:{background:"#EAF3DE"}},
-                            E('td',{style:{padding:"6px 8px",borderBottom:"0.5px solid #E2E5EF",fontSize:11,color:"#8A94A6"}},e.date),
-                            E('td',{style:{padding:"6px 8px",borderBottom:"0.5px solid #E2E5EF"}},
-                              E('select',{value:editVals.name,onChange:ev=>setEditVals(v=>({...v,name:ev.target.value})),style:{width:"100%",height:28,borderRadius:4,border:"1px solid #C0DD97",fontSize:11,background:"#fff",outline:"none"}},
-                                ...people.map(p=>E('option',{key:p},p))
-                              )
-                            ),
-                            E('td',{style:{padding:"6px 8px",borderBottom:"0.5px solid #E2E5EF"}},
-                              E('select',{value:editVals.project,onChange:ev=>setEditVals(v=>({...v,project:ev.target.value})),style:{width:"100%",height:28,borderRadius:4,border:"1px solid #C0DD97",fontSize:11,background:"#fff",outline:"none"}},
-                                ...projs.map(p=>E('option',{key:p},p))
-                              )
-                            ),
-                            E('td',{style:{padding:"6px 8px",borderBottom:"0.5px solid #E2E5EF"}},
-                              E('select',{value:editVals.stage,onChange:ev=>setEditVals(v=>({...v,stage:ev.target.value})),style:{width:"100%",height:28,borderRadius:4,border:"1px solid #C0DD97",fontSize:11,background:"#fff",outline:"none"}},
-                                ...STAGES.map(s=>E('option',{key:s},s))
-                              )
-                            ),
-                            E('td',{style:{padding:"6px 8px",borderBottom:"0.5px solid #E2E5EF",textAlign:"center"}},
-                              E('select',{value:editVals.grade,onChange:ev=>setEditVals(v=>({...v,grade:ev.target.value})),style:{width:44,height:28,borderRadius:4,border:"1px solid #C0DD97",fontSize:12,fontWeight:700,background:"#fff",outline:"none",textAlign:"center"}},
-                                ...[0,1,2,3,4,5].map(g=>E('option',{key:g,value:g},g))
-                              )
-                            ),
-                            E('td',{style:{padding:"6px 8px",borderBottom:"0.5px solid #E2E5EF",textAlign:"center"}},
-                              E('button',{onClick:()=>saveEdit(e.id),style:{height:26,padding:"0 8px",borderRadius:4,border:"none",background:"#0B6E6E",color:"#fff",fontSize:11,fontWeight:600,cursor:"pointer"}},"Save")
-                            ),
-                            E('td',{style:{padding:"6px 8px",borderBottom:"0.5px solid #E2E5EF",textAlign:"center"}},
-                              E('button',{onClick:()=>setEditing(null),style:{height:26,padding:"0 8px",borderRadius:4,border:"0.5px solid #E2E5EF",background:"#F5F6FA",color:"#8A94A6",fontSize:11,cursor:"pointer"}},"Cancel")
-                            )
-                          );
-                        }
-                        return E('tr',{key:e.id,style:{background:rb}},
-                          E('td',{style:{padding:"9px 10px",borderBottom:"0.5px solid #E2E5EF",color:"#8A94A6",fontSize:11}},e.date),
-                          E('td',{style:{padding:"9px 10px",borderBottom:"0.5px solid #E2E5EF"}},
-                            E('div',{style:{display:"flex",alignItems:"center",gap:6}},E(Av,{name:e.name,people}),E('span',{style:{fontSize:12,fontWeight:500}},e.name))
+                    React.createElement('tbody',null,
+                      ...filteredLog.slice(0,30).map((e,i)=>
+                        React.createElement('tr',{key:e.id,style:{background:i%2===0?"#F5F6FA":"#fff"}},
+                          React.createElement('td',{style:{padding:"9px 10px",borderBottom:"0.5px solid #E2E5EF",color:"#8A94A6",fontSize:11}},e.date),
+                          React.createElement('td',{style:{padding:"9px 10px",borderBottom:"0.5px solid #E2E5EF"}},
+                            React.createElement('div',{style:{display:"flex",alignItems:"center",gap:6}},React.createElement(Avatar,{name:e.name,people}),React.createElement('span',{style:{fontSize:12,fontWeight:500}},e.name))
                           ),
-                          E('td',{style:{padding:"9px 10px",borderBottom:"0.5px solid #E2E5EF",fontWeight:500,fontSize:12}},e.project),
-                          E('td',{style:{padding:"9px 10px",borderBottom:"0.5px solid #E2E5EF",color:"#8A94A6",fontSize:11}},e.stage),
-                          E('td',{style:{padding:"9px 10px",borderBottom:"0.5px solid #E2E5EF",textAlign:"center"}},E(Pill,{grade:e.grade})),
-                          E('td',{style:{padding:"9px 10px",borderBottom:"0.5px solid #E2E5EF",textAlign:"center"}},
-                            E('button',{onClick:()=>startEdit(e),title:"Edit",style:{width:26,height:26,borderRadius:4,border:"0.5px solid #B5D4F4",background:"#E6F1FB",color:"#185FA5",fontSize:12,cursor:"pointer",fontWeight:600}},"✎")
-                          ),
-                          E('td',{style:{padding:"9px 10px",borderBottom:"0.5px solid #E2E5EF",textAlign:"center"}},
-                            E('button',{onClick:()=>deleteEntry(e.id),title:"Delete",style:{width:26,height:26,borderRadius:4,border:"0.5px solid #F7C1C1",background:"#FCEBEB",color:"#A32D2D",fontSize:14,cursor:"pointer",fontWeight:600}},"×")
-                          )
-                        );
-                      })
+                          React.createElement('td',{style:{padding:"9px 10px",borderBottom:"0.5px solid #E2E5EF",fontWeight:500,fontSize:12}},e.project),
+                          React.createElement('td',{style:{padding:"9px 10px",borderBottom:"0.5px solid #E2E5EF",color:"#8A94A6",fontSize:11}},e.stage),
+                          React.createElement('td',{style:{padding:"9px 10px",borderBottom:"0.5px solid #E2E5EF",textAlign:"center"}},React.createElement(GradePill,{grade:e.grade}))
+                        )
+                      )
                     )
                   )
                 )
             ))
           ),
 
-          // ── PROJECTS TAB ──
-          tab==="projects"&&E(React.Fragment,null,
-            ...pStats.map(p=>{
-              const s=sb(p.avg);
-              return card(E(React.Fragment,null,
-                E('div',{style:{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:12,gap:8,flexWrap:"wrap"}},
-                  E('div',null,
-                    E('div',{style:{fontSize:14,fontWeight:600,color:"#1B2A4A"}},p.project),
-                    E('div',{style:{fontSize:11,color:"#8A94A6",marginTop:2}},"Last: "+p.lastDate+" · "+p.lastStage)
+          // PROJECTS TAB
+          tab==="projects"&&React.createElement(React.Fragment,null,
+            ...projectStats.map(p=>{
+              const st=statusBadge(p.avg);
+              return card(React.createElement(React.Fragment,null,
+                React.createElement('div',{style:{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:12,gap:8,flexWrap:"wrap"}},
+                  React.createElement('div',null,
+                    React.createElement('div',{style:{fontSize:14,fontWeight:600,color:"#1B2A4A"}},p.project),
+                    React.createElement('div',{style:{fontSize:11,color:"#8A94A6",marginTop:2}},"Last: "+p.lastDate+" · "+p.lastStage)
                   ),
-                  E('div',{style:{display:"flex",alignItems:"center",gap:8}},E(Pill,{grade:p.lastGrade}),E(Badge,s))
+                  React.createElement('div',{style:{display:"flex",alignItems:"center",gap:8}},React.createElement(GradePill,{grade:p.lastGrade}),React.createElement(Badge,st))
                 ),
-                E(Bar,{value:p.avg}),
-                E('div',{style:{display:"flex",alignItems:"center",gap:6,marginTop:10,flexWrap:"wrap"}},
-                  E('span',{style:{fontSize:11,color:"#8A94A6"}},"Team:"),
-                  ...p.team.map(person=>E(Av,{key:person,name:person,people})),
-                  E('span',{style:{fontSize:11,color:"#8A94A6",marginLeft:4}},"Avg: ",E('strong',{style:{color:"#1B2A4A"}},p.avg.toFixed(1)))
+                React.createElement(ProgressBar,{value:p.avg}),
+                React.createElement('div',{style:{display:"flex",alignItems:"center",gap:6,marginTop:10,flexWrap:"wrap"}},
+                  React.createElement('span',{style:{fontSize:11,color:"#8A94A6"}},"Team:"),
+                  ...p.team.map(person=>React.createElement(Avatar,{key:person,name:person,people})),
+                  React.createElement('span',{style:{fontSize:11,color:"#8A94A6",marginLeft:4}},"Avg: ",React.createElement('strong',{style:{color:"#1B2A4A"}},p.avg.toFixed(1)))
                 )
               ),{key:p.project});
             }),
-            ...noP.map(p=>E('div',{key:p,style:{background:"#fff",borderRadius:12,border:"0.5px solid #E2E5EF",padding:16,marginBottom:10,display:"flex",justifyContent:"space-between",alignItems:"center"}},
-              E('span',{style:{fontSize:14,fontWeight:600,color:"#1B2A4A"}},p),
-              E(Badge,{label:"No data yet",bg:"#F1EFE8",fg:"#5F5E5A"})
-            ))
+            ...noDataProjects.map(p=>
+              React.createElement('div',{key:p,style:{background:"#fff",borderRadius:12,border:"0.5px solid #E2E5EF",padding:16,marginBottom:10,display:"flex",justifyContent:"space-between",alignItems:"center"}},
+                React.createElement('span',{style:{fontSize:14,fontWeight:600,color:"#1B2A4A"}},p),
+                React.createElement(Badge,{label:"No data yet",bg:"#F1EFE8",fg:"#5F5E5A"})
+              )
+            )
           ),
 
-          // ── PEOPLE TAB ──
-          tab==="people"&&E(React.Fragment,null,
-            E('div',{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:10,marginBottom:16}},
-              ...peStats.map(p=>{
-                const b=bw(p.ip);
-                return E('div',{key:p.name,style:{background:"#fff",borderRadius:12,border:"0.5px solid #E2E5EF",padding:16}},
-                  E('div',{style:{display:"flex",alignItems:"center",gap:10,marginBottom:12}},
-                    E(Av,{name:p.name,people}),
-                    E('div',null,
-                      E('div',{style:{fontSize:13,fontWeight:600,color:"#1B2A4A"}},p.name),
-                      E('div',{style:{fontSize:11,color:"#8A94A6"}},p.prjs.length+" project"+(p.prjs.length!==1?"s":""))
+          // PEOPLE TAB
+          tab==="people"&&React.createElement(React.Fragment,null,
+            React.createElement('div',{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:10,marginBottom:16}},
+              ...peopleStats.map(p=>{
+                const bw=bwBadge(p.inProg);
+                return React.createElement('div',{key:p.name,style:{background:"#fff",borderRadius:12,border:"0.5px solid #E2E5EF",padding:16}},
+                  React.createElement('div',{style:{display:"flex",alignItems:"center",gap:10,marginBottom:12}},
+                    React.createElement(Avatar,{name:p.name,people}),
+                    React.createElement('div',null,
+                      React.createElement('div',{style:{fontSize:13,fontWeight:600,color:"#1B2A4A"}},p.name),
+                      React.createElement('div',{style:{fontSize:11,color:"#8A94A6"}},p.prjs.length+" project"+(p.prjs.length!==1?"s":""))
                     ),
-                    E('div',{style:{marginLeft:"auto"}},E(Badge,b))
+                    React.createElement('div',{style:{marginLeft:"auto"}},React.createElement(Badge,bw))
                   ),
-                  p.avg!==null&&E(Bar,{value:p.avg}),
-                  E('div',{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginTop:12}},
-                    ...[["Logs",p.total,"#E6F1FB","#0C447C"],["In prog.",p.ip,"#FAEEDA","#854F0B"],["Done",p.dn,"#EAF3DE","#27500A"]].map(([l,v,bg,fg])=>
-                      E('div',{key:l,style:{background:bg,borderRadius:8,padding:"8px 10px",textAlign:"center"}},
-                        E('div',{style:{fontSize:11,color:fg,fontWeight:500}},l),
-                        E('div',{style:{fontSize:18,fontWeight:700,color:fg}},v)
+                  p.avg!==null&&React.createElement(ProgressBar,{value:p.avg}),
+                  React.createElement('div',{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginTop:12}},
+                    ...[["Logs",p.total,"#E6F1FB","#0C447C"],["In prog.",p.inProg,"#FAEEDA","#854F0B"],["Done",p.done,"#EAF3DE","#27500A"]].map(([l,v,bg,fg])=>
+                      React.createElement('div',{key:l,style:{background:bg,borderRadius:8,padding:"8px 10px",textAlign:"center"}},
+                        React.createElement('div',{style:{fontSize:11,color:fg,fontWeight:500}},l),
+                        React.createElement('div',{style:{fontSize:18,fontWeight:700,color:fg}},v)
                       )
                     )
                   )
@@ -352,44 +300,44 @@
             )
           ),
 
-          // ── SETTINGS TAB ──
-          tab==="settings"&&E('div',{style:{display:"grid",gap:16}},
-            card(E(React.Fragment,null,
-              E('div',{style:{fontSize:14,fontWeight:600,color:"#1B2A4A",marginBottom:4}},"Team members"),
-              E('div',{style:{fontSize:12,color:"#8A94A6",marginBottom:14}},"Add or remove people. Save when done."),
-              E('div',{style:{display:"flex",flexWrap:"wrap",gap:6,marginBottom:10}},
-                ...ePpl.map(item=>E('div',{key:item,style:{display:"flex",alignItems:"center",gap:4,background:"#E6F1FB",color:"#0C447C",borderRadius:6,padding:"4px 10px",fontSize:12,fontWeight:500}},
+          // SETTINGS TAB
+          tab==="settings"&&React.createElement('div',{style:{display:"grid",gap:16}},
+            card(React.createElement(React.Fragment,null,
+              React.createElement('div',{style:{fontSize:14,fontWeight:600,color:"#1B2A4A",marginBottom:4}},"Team members"),
+              React.createElement('div',{style:{fontSize:12,color:"#8A94A6",marginBottom:14}},"Add or remove people. Save when done."),
+              React.createElement('div',{style:{display:"flex",flexWrap:"wrap",gap:6,marginBottom:10}},
+                ...editPeople.map(item=>React.createElement('div',{key:item,style:{display:"flex",alignItems:"center",gap:4,background:"#E6F1FB",color:"#0C447C",borderRadius:6,padding:"4px 10px",fontSize:12,fontWeight:500}},
                   item,
-                  E('button',{onClick:()=>setEPpl(ep=>ep.filter(x=>x!==item)),style:{background:"none",border:"none",cursor:"pointer",color:"#0C447C",fontSize:16,lineHeight:1,padding:"0 0 0 4px",opacity:0.5}},"×")
+                  React.createElement('button',{onClick:()=>setEditPeople(ep=>ep.filter(x=>x!==item)),style:{background:"none",border:"none",cursor:"pointer",color:"#0C447C",fontSize:16,lineHeight:1,padding:"0 0 0 4px",opacity:0.5}},"×")
                 ))
               ),
-              E('div',{style:{display:"flex",gap:8}},
-                E('input',{value:nPpl,onChange:e=>setNPpl(e.target.value),onKeyDown:e=>e.key==="Enter"&&addPpl(),placeholder:"Type name + Enter",style:{flex:1,height:38,borderRadius:8,border:"1px solid #E2E5EF",padding:"0 12px",fontSize:13,background:"#F5F6FA",outline:"none",color:"#1A1A2E"}}),
-                E('button',{onClick:addPpl,style:{height:38,padding:"0 16px",borderRadius:8,border:"none",background:"#1B2A4A",color:"#fff",fontSize:13,fontWeight:600,cursor:"pointer"}},"Add")
+              React.createElement('div',{style:{display:"flex",gap:8}},
+                React.createElement('input',{value:newPerson,onChange:e=>setNewPerson(e.target.value),onKeyDown:e=>e.key==="Enter"&&addPerson(),placeholder:"Type name + Enter",style:{flex:1,height:38,borderRadius:8,border:"1px solid #E2E5EF",padding:"0 12px",fontSize:13,background:"#F5F6FA",outline:"none",color:"#1A1A2E"}}),
+                React.createElement('button',{onClick:addPerson,style:{height:38,padding:"0 16px",borderRadius:8,border:"none",background:"#1B2A4A",color:"#fff",fontSize:13,fontWeight:600,cursor:"pointer"}},"Add")
               )
             )),
-            card(E(React.Fragment,null,
-              E('div',{style:{fontSize:14,fontWeight:600,color:"#1B2A4A",marginBottom:4}},"Projects"),
-              E('div',{style:{fontSize:12,color:"#8A94A6",marginBottom:14}},"Add new projects anytime. Remove completed ones."),
-              E('div',{style:{display:"flex",flexWrap:"wrap",gap:6,marginBottom:10}},
-                ...ePrj.map(item=>E('div',{key:item,style:{display:"flex",alignItems:"center",gap:4,background:"#EAF3DE",color:"#3B6D11",borderRadius:6,padding:"4px 10px",fontSize:12,fontWeight:500}},
+            card(React.createElement(React.Fragment,null,
+              React.createElement('div',{style:{fontSize:14,fontWeight:600,color:"#1B2A4A",marginBottom:4}},"Projects"),
+              React.createElement('div',{style:{fontSize:12,color:"#8A94A6",marginBottom:14}},"Add new projects anytime. Remove completed ones."),
+              React.createElement('div',{style:{display:"flex",flexWrap:"wrap",gap:6,marginBottom:10}},
+                ...editProjects.map(item=>React.createElement('div',{key:item,style:{display:"flex",alignItems:"center",gap:4,background:"#EAF3DE",color:"#3B6D11",borderRadius:6,padding:"4px 10px",fontSize:12,fontWeight:500}},
                   item,
-                  E('button',{onClick:()=>setEPrj(ep=>ep.filter(x=>x!==item)),style:{background:"none",border:"none",cursor:"pointer",color:"#3B6D11",fontSize:16,lineHeight:1,padding:"0 0 0 4px",opacity:0.5}},"×")
+                  React.createElement('button',{onClick:()=>setEditProjects(ep=>ep.filter(x=>x!==item)),style:{background:"none",border:"none",cursor:"pointer",color:"#3B6D11",fontSize:16,lineHeight:1,padding:"0 0 0 4px",opacity:0.5}},"×")
                 ))
               ),
-              E('div',{style:{display:"flex",gap:8}},
-                E('input',{value:nPrj,onChange:e=>setNPrj(e.target.value),onKeyDown:e=>e.key==="Enter"&&addPrj(),placeholder:"Project name + Enter",style:{flex:1,height:38,borderRadius:8,border:"1px solid #E2E5EF",padding:"0 12px",fontSize:13,background:"#F5F6FA",outline:"none",color:"#1A1A2E"}}),
-                E('button',{onClick:addPrj,style:{height:38,padding:"0 16px",borderRadius:8,border:"none",background:"#1B2A4A",color:"#fff",fontSize:13,fontWeight:600,cursor:"pointer"}},"Add")
+              React.createElement('div',{style:{display:"flex",gap:8}},
+                React.createElement('input',{value:newProject,onChange:e=>setNewProject(e.target.value),onKeyDown:e=>e.key==="Enter"&&addProject(),placeholder:"Project name + Enter",style:{flex:1,height:38,borderRadius:8,border:"1px solid #E2E5EF",padding:"0 12px",fontSize:13,background:"#F5F6FA",outline:"none",color:"#1A1A2E"}}),
+                React.createElement('button',{onClick:addProject,style:{height:38,padding:"0 16px",borderRadius:8,border:"none",background:"#1B2A4A",color:"#fff",fontSize:13,fontWeight:600,cursor:"pointer"}},"Add")
               )
             )),
-            E('div',{style:{background:"#1B2A4A",borderRadius:12,padding:20,display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,flexWrap:"wrap"}},
-              E('div',null,
-                E('div',{style:{fontSize:13,fontWeight:600,color:"#fff"}},"Save settings"),
-                E('div',{style:{fontSize:11,color:"rgba(255,255,255,0.45)",marginTop:2}},"Updates dropdowns on this device")
+            React.createElement('div',{style:{background:"#1B2A4A",borderRadius:12,padding:20,display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,flexWrap:"wrap"}},
+              React.createElement('div',null,
+                React.createElement('div',{style:{fontSize:13,fontWeight:600,color:"#fff"}},"Save settings"),
+                React.createElement('div',{style:{fontSize:11,color:"rgba(255,255,255,0.45)",marginTop:2}},"Updates dropdowns on this device")
               ),
-              E('div',{style:{display:"flex",alignItems:"center",gap:12}},
-                sSaved&&E('span',{style:{fontSize:12,color:"#C0DD97",fontWeight:500}},"Saved"),
-                E('button',{onClick:saveSettings,style:{height:40,padding:"0 24px",borderRadius:8,border:"none",background:"#C0DD97",color:"#27500A",fontSize:13,fontWeight:700,cursor:"pointer"}},"Save settings")
+              React.createElement('div',{style:{display:"flex",alignItems:"center",gap:12}},
+                settingsSaved&&React.createElement('span',{style:{fontSize:12,color:"#C0DD97",fontWeight:500}},"Saved"),
+                React.createElement('button',{onClick:saveSettings,style:{height:40,padding:"0 24px",borderRadius:8,border:"none",background:"#C0DD97",color:"#27500A",fontSize:13,fontWeight:700,cursor:"pointer"}},"Save settings")
               )
             )
           )
@@ -397,7 +345,7 @@
       );
     }
 
-    ReactDOM.createRoot(document.getElementById('root')).render(E(App,null));
+    ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
   </script>
 </body>
 </html>
