@@ -95,6 +95,30 @@ textarea.input{height:70px;padding:10px 12px;resize:vertical;}
 .lock-screen{display:flex;align-items:center;justify-content:center;min-height:300px;}
 .lock-box{background:#fff;border-radius:16px;border:0.5px solid #E2E5EF;padding:32px;max-width:320px;width:100%;text-align:center;}
 .time-summary{display:flex;align-items:center;gap:8px;padding:8px 10px;background:#F5F6FA;border-radius:8px;margin-top:8px;font-size:12px;}
+.planner-wrap{overflow-x:auto;padding-bottom:8px;}
+.planner-grid{display:grid;gap:0;min-width:700px;}
+.planner-header-row{display:grid;background:#1B2A4A;border-radius:10px 10px 0 0;overflow:hidden;}
+.planner-person-col{width:130px;flex-shrink:0;}
+.planner-col-head{padding:10px 12px;font-size:11px;font-weight:600;color:#fff;text-align:center;border-right:0.5px solid rgba(255,255,255,0.15);}
+.planner-row{display:grid;border-bottom:0.5px solid #E2E5EF;}
+.planner-row:last-child{border-bottom:none;}
+.planner-person-cell{padding:12px 10px;background:#F9FAFB;border-right:0.5px solid #E2E5EF;display:flex;align-items:flex-start;gap:8px;flex-shrink:0;width:130px;}
+.planner-cell{padding:8px;border-right:0.5px solid #E2E5EF;background:#fff;min-height:80px;vertical-align:top;}
+.planner-cell:last-child{border-right:none;}
+.plan-card{border-radius:8px;padding:7px 9px;margin-bottom:6px;font-size:11px;position:relative;border:0.5px solid rgba(0,0,0,0.08);}
+.plan-card-brand{font-weight:700;font-size:11px;margin-bottom:2px;}
+.plan-card-task{color:rgba(0,0,0,0.65);font-size:11px;line-height:1.4;}
+.plan-card-date{font-size:10px;margin-top:4px;opacity:0.7;}
+.plan-card-del{position:absolute;top:4px;right:4px;background:none;border:none;cursor:pointer;font-size:13px;opacity:0.4;line-height:1;}
+.plan-card-del:hover{opacity:1;}
+.plan-card.auto{border-left:3px solid;}
+.add-card-btn{width:100%;background:none;border:1.5px dashed #D0D5E0;border-radius:8px;padding:6px;font-size:11px;color:#B4B2A9;cursor:pointer;text-align:center;}
+.add-card-btn:hover{border-color:#0B6E6E;color:#0B6E6E;}
+.week-nav{display:flex;align-items:center;gap:12px;margin-bottom:16px;}
+.week-nav-btn{background:#fff;border:0.5px solid #E2E5EF;border-radius:6px;width:30px;height:30px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.week-label{font-size:13px;font-weight:600;color:#1B2A4A;}
+.planner-legend{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px;font-size:11px;color:#8A94A6;}
+.legend-dot{width:10px;height:10px;border-radius:3px;display:inline-block;margin-right:4px;}
 </style>
 </head>
 <body>
@@ -113,6 +137,8 @@ textarea.input{height:70px;padding:10px 12px;resize:vertical;}
   <button class="tab active" data-tab="log" onclick="switchTab('log')">Log</button>
   <button class="tab" data-tab="projects" onclick="switchTab('projects')">Projects</button>
   <button class="tab" data-tab="people" onclick="switchTab('people')">People</button>
+  <button class="tab" data-tab="strategy-planner" onclick="switchTab('strategy-planner')">Strategy Planner</button>
+  <button class="tab" data-tab="content-planner" onclick="switchTab('content-planner')">Content Planner</button>
   <button class="tab" data-tab="settings" onclick="switchTab('settings')">Settings</button>
 </div>
 
@@ -127,6 +153,8 @@ textarea.input{height:70px;padding:10px 12px;resize:vertical;}
   <div id="tab-log"></div>
   <div id="tab-projects" class="hidden"></div>
   <div id="tab-people" class="hidden"></div>
+  <div id="tab-strategy-planner" class="hidden"></div>
+  <div id="tab-content-planner" class="hidden"></div>
   <div id="tab-settings" class="hidden"></div>
 </div>
 
@@ -199,23 +227,9 @@ textarea.input{height:70px;padding:10px 12px;resize:vertical;}
   </div>
 </div>
 
-<!-- PASSWORD MODAL -->
-<div class="modal-overlay hidden" id="modal-password">
-  <div class="modal" style="max-width:360px;">
-    <div class="modal-title">
-      <span>Settings — Enter Password</span>
-      <button class="modal-close" onclick="closeModal('modal-password')">×</button>
-    </div>
-    <div class="field"><label>Password</label><input type="password" id="settings-pw-input" placeholder="Enter password" onkeydown="if(event.key==='Enter')checkPassword()"/></div>
-    <div id="pw-err" style="color:#A32D2D;font-size:12px;margin-bottom:10px;display:none;">Incorrect password</div>
-    <button class="btn-primary" style="width:100%" onclick="checkPassword()">Unlock Settings</button>
-  </div>
-</div>
+
 
 <script>
-var SETTINGS_PASSWORD = "sort2024";
-var settingsUnlocked = false;
-
 var WORKFLOWS = {
   "Brand Comm Strategy": { color:"#4A6FA5", light:"#EBF0FA", stages:["Brand brief doc","Brand brief call with client","3C","Community connect","Strategy deck completion","Incorporating feedback and final deck","Strategy presentation meeting","Mailing to client","Handover to content strategy team"] },
   "Content Strategy": { color:"#0B6E6E", light:"#E6F5F5", stages:["Receive handover","Plotting ideas on excel","Always-on paid ads","Hygiene content ideas","Hub campaigns","Hero campaigns","Roll-out plan","Incorporating feedback, adding videos and final deck","Content strategy presentation","Mailing to client"] },
@@ -228,10 +242,13 @@ var WORKFLOWS = {
   "Archish — Retainer": { color:"#546E7A", light:"#EDF1F3", stages:["Monthly content plan","Presentation","Calendar","Execution","Reviews","Finalisation"] },
   "Creative Audit": { color:"#6D4C41", light:"#F3EDE9", stages:["Creative Audit — Progress"] },
   "Time-off": { color:"#78909C", light:"#ECEFF1", stages:["Time-off"] },
-  "New Business Development": { color:"#2E7D32", light:"#E8F5E9", stages:["Initial meetings","Proposal development","Negotiations","MSA / Contract","Kick off mail"] }
+  "New Business Development": { color:"#2E7D32", light:"#E8F5E9", stages:["Initial meetings","Proposal development","Negotiations","MSA / Contract","Kick off mail"] },
+  "Project Management": { color:"#E65100", light:"#FFF3E0", stages:["Project Management"] },
+  "Admin": { color:"#6A1B9A", light:"#F3E5F5", stages:["Admin"] }
 };
 var WF_NAMES = Object.keys(WORKFLOWS);
 var DEF_PEOPLE = ["Shipra","Tanya","Kanika","Binita","Sparsh","Akshat"];
+var ROLES = ["Strategist","Content Team","Editor","Co-founder","Business Development","Project Manager","Intern"];
 var AV_COLORS = ["#E6F1FB","#EAF3DE","#FAEEDA","#FCEBEB","#EEEDFE","#F1EFE8","#E1F5EE","#FBEAF0","#FEF0E0","#F0F8FF"];
 var AV_FGS    = ["#0C447C","#27500A","#633806","#791F1F","#3C3489","#444441","#085041","#72243E","#7A4A00","#1A3A5C"];
 
@@ -239,17 +256,20 @@ var state = {
   logs: lsGet("trk3_logs") || [],
   projects: lsGet("trk3_projects") || [],
   people: lsGet("trk3_people") || DEF_PEOPLE,
+  peopleRoles: lsGet("trk3_roles") || {},
   activeTab: "log",
   editLogId: null,
   selectedGrade: null,
   stageDates: [],
   analysisText: "",
-  analysing: false
+  analysing: false,
+  strategyCards: lsGet("trk3_scards") || {},
+  contentCards: lsGet("trk3_ccards") || {}
 };
 
 function lsGet(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } }
 function lsSet(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
-function save(){ lsSet("trk3_logs",state.logs); lsSet("trk3_projects",state.projects); lsSet("trk3_people",state.people); updateStats(); }
+function save(){ lsSet("trk3_logs",state.logs); lsSet("trk3_projects",state.projects); lsSet("trk3_people",state.people); lsSet("trk3_roles",state.peopleRoles); lsSet("trk3_scards",state.strategyCards); lsSet("trk3_ccards",state.contentCards); updateStats(); }
 
 function fmtDate(d){ if(!d) d=new Date(); return d.getDate()+"-"+["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getMonth()]+"-"+String(d.getFullYear()).slice(2); }
 function fromISO(s){ if(!s)return""; var d=new Date(s+"T12:00:00"); return fmtDate(d); }
@@ -298,33 +318,18 @@ function calcStatus(proj){
 
 // ── Tab switching ──────────────────────────────────────────────────────────────
 function switchTab(t){
-  if(t==="settings" && !settingsUnlocked){
-    document.getElementById("settings-pw-input").value="";
-    document.getElementById("pw-err").style.display="none";
-    document.getElementById("modal-password").classList.remove("hidden");
-    return;
-  }
   state.activeTab=t;
   document.querySelectorAll(".tab").forEach(function(el){ el.classList.toggle("active",el.dataset.tab===t); });
-  ["log","projects","people","settings"].forEach(function(id){ document.getElementById("tab-"+id).classList.toggle("hidden",id!==t); });
+  ["log","projects","people","strategy-planner","content-planner","settings"].forEach(function(id){ document.getElementById("tab-"+id).classList.toggle("hidden",id!==t); });
   renderTab(t);
-}
-
-function checkPassword(){
-  var val=document.getElementById("settings-pw-input").value;
-  if(val===SETTINGS_PASSWORD){
-    settingsUnlocked=true;
-    closeModal("modal-password");
-    switchTab("settings");
-  } else {
-    document.getElementById("pw-err").style.display="block";
-  }
 }
 
 function renderTab(t){
   if(t==="log") renderLog();
   else if(t==="projects") renderProjects();
   else if(t==="people") renderPeople();
+  else if(t==="strategy-planner") renderStrategyPlanner();
+  else if(t==="content-planner") renderContentPlanner();
   else if(t==="settings") renderSettings();
 }
 
@@ -480,7 +485,7 @@ function renderSettings(){
     return '<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:'+wf.light+';border-radius:8px;margin-bottom:6px;border:0.5px solid '+wf.color+'33;"><div style="width:10px;height:10px;border-radius:50%;background:'+wf.color+';flex-shrink:0;"></div><div><div style="font-size:12px;font-weight:600;color:'+wf.color+';">'+w+'</div><div style="font-size:11px;color:#8A94A6;">'+wf.stages.length+' stages</div></div></div>';
   }).join("");
 
-  document.getElementById("tab-settings").innerHTML='<div class="card"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;"><div class="card-title" style="margin:0">Team members</div><button class="btn btn-dark" style="font-size:11px;" onclick="settingsUnlocked=false;switchTab(\'log\')">🔒 Lock settings</button></div><div style="font-size:12px;color:#8A94A6;margin-bottom:12px;">Add or remove people. Changes apply immediately.</div><div style="margin-bottom:12px;">'+tags+'</div><div style="display:flex;gap:8px;"><input class="input" id="new-person-input" style="flex:1;" placeholder="Name + Enter to add" onkeydown="if(event.key===\'Enter\')addPerson()"/><button class="btn-primary" style="height:38px;" onclick="addPerson()">Add</button></div></div><div class="card"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;"><div class="card-title" style="margin:0">Projects</div></div><div style="font-size:12px;color:#8A94A6;margin-bottom:12px;">Delete a project to remove it and clear it from logs.</div>'+(state.projects.length?projList:'<div style="color:#8A94A6;font-size:13px;font-style:italic;">No projects yet</div>')+'</div><div class="card"><div class="card-title">Workflow types (built in)</div>'+wfList+'</div><div class="card" style="background:#FFF8E6;border-color:#F0D070;"><div style="font-size:12px;font-weight:600;color:#856404;margin-bottom:4px;">🔒 Settings password</div><div style="font-size:12px;color:#8A94A6;">Password: <strong>sort2024</strong> — change this in the code if needed.</div></div>';
+  document.getElementById("tab-settings").innerHTML='<div class="card"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;"><div class="card-title" style="margin:0">Team members</div><button class="btn btn-dark" style="font-size:11px;" onclick="settingsUnlocked=false;switchTab(\'log\')">🔒 Lock settings</button></div><div style="font-size:12px;color:#8A94A6;margin-bottom:12px;">Add or remove people. Changes apply immediately.</div><div style="margin-bottom:12px;">'+tags+'</div><div style="display:flex;gap:8px;"><input class="input" id="new-person-input" style="flex:1;" placeholder="Name + Enter to add" onkeydown="if(event.key===\'Enter\')addPerson()"/><button class="btn-primary" style="height:38px;" onclick="addPerson()">Add</button></div></div><div class="card"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;"><div class="card-title" style="margin:0">Projects</div></div><div style="font-size:12px;color:#8A94A6;margin-bottom:12px;">Delete a project to remove it and clear it from logs.</div>'+(state.projects.length?projList:'<div style="color:#8A94A6;font-size:13px;font-style:italic;">No projects yet</div>')+'</div><div class="card"><div class="card-title">Workflow types (built in)</div>'+wfList+'</div>';
 }
 
 function deleteProject(id){
@@ -709,6 +714,329 @@ function runAnalysis(){
     state.analysing=false;
     renderPeople();
   });
+}
+
+
+// ── PLANNER HELPERS ────────────────────────────────────────────────────────────
+var plannerWeekOffset = 0;
+var contentWeekOffset = 0;
+
+function getWeekStart(offset){
+  var d = new Date();
+  var day = d.getDay();
+  var diff = d.getDate() - day + (day===0?-6:1); // Monday
+  d.setDate(diff + offset*7);
+  d.setHours(0,0,0,0);
+  return d;
+}
+function weekDates(offset){
+  var start = getWeekStart(offset);
+  var dates = [];
+  for(var i=0;i<5;i++){
+    var d=new Date(start);
+    d.setDate(d.getDate()+i);
+    dates.push(d.toISOString().slice(0,10));
+  }
+  return dates;
+}
+function weekLabel(offset){
+  var start=getWeekStart(offset);
+  var end=new Date(start);end.setDate(end.getDate()+4);
+  var mo=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  return mo[start.getMonth()]+" "+start.getDate()+" – "+mo[end.getMonth()]+" "+end.getDate()+", "+end.getFullYear();
+}
+function isoToDisplay(iso){
+  var d=new Date(iso+"T12:00:00");
+  return d.getDate()+"-"+["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getMonth()];
+}
+
+// Get auto-cards from logs for a person, column type, week dates
+function getAutoCardsStrategy(person, colType, weekDts){
+  var colWFs = {
+    "Closures": ["Brand Comm Strategy","Brand Identity","Content Strategy","New Business Development"],
+    "Presentations": ["Brand Comm Strategy","Content Strategy","Brand Identity"],
+    "Brief Meetings": ["Brand Comm Strategy","Brand Identity","New Business Development"],
+    "Major Projects": ["Brand Comm Strategy","Content Strategy","Brand Identity","New Business Development"]
+  };
+  var wfs = colWFs[colType] || [];
+  var cards = [];
+  state.logs.forEach(function(l){
+    if(l.name !== person) return;
+    if(!weekDts.includes(isoLogToISO(l.date))) return;
+    if(!wfs.includes(l.wf)) return;
+    // Match column more precisely
+    var include = false;
+    if(colType==="Closures" && (l.stage.toLowerCase().includes("final")||l.stage.toLowerCase().includes("handover")||l.stage.toLowerCase().includes("mailing")||l.stage.toLowerCase().includes("closure")||l.grade===5)) include=true;
+    if(colType==="Presentations" && (l.stage.toLowerCase().includes("presentation")||l.stage.toLowerCase().includes("deck"))) include=true;
+    if(colType==="Brief Meetings" && (l.stage.toLowerCase().includes("brief")||l.stage.toLowerCase().includes("meeting")||l.stage.toLowerCase().includes("call"))) include=true;
+    if(colType==="Major Projects" && l.grade>=3) include=true;
+    if(include) cards.push({id:"auto_"+l.id,brand:l.projectName,task:l.stage,date:l.date,grade:l.grade,auto:true,wf:l.wf});
+  });
+  // Deduplicate by project+stage
+  var seen={};
+  return cards.filter(function(c){var k=c.brand+c.task;if(seen[k])return false;seen[k]=true;return true;});
+}
+
+function isoLogToISO(dateStr){
+  // Convert "26-Apr-25" to "2025-04-26"
+  var parts = dateStr.split("-");
+  if(parts.length!==3) return dateStr;
+  var mo=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"].indexOf(parts[1]);
+  return "20"+parts[2]+"-"+String(mo+1).padStart(2,"0")+"-"+String(parts[0]).padStart(2,"0");
+}
+
+function getAutoCardsContent(person, colType, weekDts){
+  var colWFs = {
+    "TSG Organic Reel": ["Sorted Girl — Organic Reels"],
+    "TSG Paid / Branded": ["Sorted Girl — Branded Deal"],
+    "SYM Reel": ["SYM — Reels"],
+    "SYM Carousel": ["SYM — Carousels"],
+    "SYM Planning": ["SYM — Content Planning"]
+  };
+  var wfs = colWFs[colType] || [];
+  var cards = [];
+  state.logs.forEach(function(l){
+    if(l.name !== person) return;
+    if(!weekDts.includes(isoLogToISO(l.date))) return;
+    if(!wfs.includes(l.wf)) return;
+    cards.push({id:"auto_"+l.id,brand:l.projectName,task:l.stage,date:l.date,grade:l.grade,auto:true,wf:l.wf});
+  });
+  var seen={};
+  return cards.filter(function(c){var k=c.brand+c.task;if(seen[k])return false;seen[k]=true;return true;});
+}
+
+function getWFColor(wfName){
+  var wf=WORKFLOWS[wfName];
+  return wf?wf.color:"#888";
+}
+
+// ── STRATEGY PLANNER ──────────────────────────────────────────────────────────
+var STRATEGY_COLS = ["Closures","Presentations","Brief Meetings","Major Projects"];
+
+function mkCard(brand, task, date, bg, color, isAuto, delFn) {
+  var h = [];
+  h.push('<div class="plan-card' + (isAuto ? ' auto' : '') + '" style="background:' + bg + ';' + (isAuto ? 'border-left:3px solid ' + color + ';' : '') + '">');
+  h.push('<div class="plan-card-brand" style="color:' + color + '">' + brand + '</div>');
+  if(task) h.push('<div class="plan-card-task">' + task + '</div>');
+  if(date) h.push('<div class="plan-card-date">\uD83D\uDCC5 ' + (isAuto ? date : isoToDisplay(date)) + '</div>');
+  if(isAuto) h.push('<span style="position:absolute;top:4px;right:6px;font-size:9px;background:' + color + ';color:#fff;border-radius:4px;padding:1px 4px;">auto</span>');
+  if(delFn) h.push('<button class="plan-card-del" onclick="' + delFn + '">&#x00D7;</button>');
+  h.push('</div>');
+  return h.join('');
+}
+
+function renderStrategyPlanner(){
+  var weekDts = weekDates(plannerWeekOffset);
+  var gridCols = "130px repeat(" + STRATEGY_COLS.length + ", 1fr)";
+  var planPeople = state.people.filter(function(p){
+    var roles = state.peopleRoles[p]||[];
+    return roles.length===0 || roles.some(function(r){return["Strategist","Co-founder","Business Development","Project Manager","Intern"].includes(r);});
+  });
+  if(planPeople.length===0) planPeople = state.people;
+
+  var html = [];
+  html.push('<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;">');
+  html.push('<div><div style="font-size:16px;font-weight:700;color:#1B2A4A;margin-bottom:2px;">Strategy Planner</div>');
+  html.push('<div style="font-size:12px;color:#8A94A6;">Weekly view — manual cards + auto from logs</div></div>');
+  html.push('<div class="week-nav">');
+  html.push('<button class="week-nav-btn" onclick="plannerWeekOffset--;renderStrategyPlanner()">&#x2039;</button>');
+  html.push('<span class="week-label">' + weekLabel(plannerWeekOffset) + '</span>');
+  html.push('<button class="week-nav-btn" onclick="plannerWeekOffset++;renderStrategyPlanner()">&#x203A;</button>');
+  html.push('</div></div>');
+  html.push('<div class="planner-legend"><span><span class="legend-dot" style="background:#E8F5EF;border-left:3px solid #2E7D5E;display:inline-block;"></span> Auto from logs</span>&nbsp;&nbsp;<span><span class="legend-dot" style="background:#EBF0FA;"></span> Manual</span></div>');
+  html.push('<div class="planner-wrap"><div style="min-width:700px;">');
+  html.push('<div style="display:grid;grid-template-columns:' + gridCols + ';background:#1B2A4A;border-radius:10px 10px 0 0;overflow:hidden;">');
+  html.push('<div class="planner-col-head" style="text-align:left;">Person</div>');
+  STRATEGY_COLS.forEach(function(c){ html.push('<div class="planner-col-head">' + c + '</div>'); });
+  html.push('</div>');
+  html.push('<div style="border:0.5px solid #E2E5EF;border-top:none;border-radius:0 0 10px 10px;overflow:hidden;">');
+
+  planPeople.forEach(function(p) {
+    var pi = Math.max(0, state.people.indexOf(p)) % AV_COLORS.length;
+    var ini = p.split(" ").map(function(w){return w[0];}).join("").slice(0,2).toUpperCase();
+    html.push('<div class="planner-row" style="display:grid;grid-template-columns:' + gridCols + ';">');
+    html.push('<div class="planner-person-cell">');
+    html.push('<div class="avatar" style="background:' + AV_COLORS[pi] + ';color:' + AV_FGS[pi] + ';width:28px;height:28px;font-size:10px;">' + ini + '</div>');
+    html.push('<span style="font-size:12px;font-weight:600;color:#1B2A4A;">' + p + '</span></div>');
+
+    STRATEGY_COLS.forEach(function(col) {
+      var autoCards = getAutoCardsStrategy(p, col, weekDts);
+      var mKey = "s_" + p + "_" + col + "_" + plannerWeekOffset;
+      var manualCards = state.strategyCards[mKey] || [];
+      var colors = ["#FBF2E6","#EBF0FA","#E8F5EF","#F2ECF9","#FCEEF5","#FFF3CD"];
+      var fgCols = ["#C07C2B","#4A6FA5","#2E7D5E","#7B4FBE","#C44D8A","#856404"];
+
+      html.push('<div class="planner-cell">');
+      autoCards.forEach(function(c) {
+        var wf = WORKFLOWS[c.wf] || {color:"#888", light:"#F5F5F5"};
+        html.push(mkCard(c.brand, c.task, c.date, wf.light, wf.color, true, null));
+      });
+      manualCards.forEach(function(c, ci) {
+        var bg = colors[ci % colors.length];
+        var fg = fgCols[ci % fgCols.length];
+        var delFn = "deleteStrategyCard(" + JSON.stringify(p) + "," + JSON.stringify(col) + "," + ci + ")";
+        html.push(mkCard(c.brand, c.task, c.date, bg, fg, false, delFn));
+      });
+      var addFn = "openAddCard(" + JSON.stringify("strategy") + "," + JSON.stringify(p) + "," + JSON.stringify(col) + ")";
+      html.push('<button class="add-card-btn" onclick="' + addFn + '">+ Add</button>');
+      html.push('</div>');
+    });
+    html.push('</div>');
+  });
+
+  html.push('</div></div></div>');
+  document.getElementById("tab-strategy-planner").innerHTML = html.join('');
+}
+
+function deleteStrategyCard(person, col, idx){
+  var key = "s_" + person + "_" + col + "_" + plannerWeekOffset;
+  if(!state.strategyCards[key]) return;
+  state.strategyCards[key].splice(idx, 1);
+  lsSet("trk3_scards", state.strategyCards);
+  renderStrategyPlanner();
+}
+
+// ── CONTENT PLANNER ───────────────────────────────────────────────────────────
+var CONTENT_COLS = ["TSG Organic Reel","TSG Paid / Branded","SYM Reel","SYM Carousel","SYM Planning"];
+
+function renderContentPlanner(){
+  var weekDts = weekDates(contentWeekOffset);
+  var gridCols = "130px repeat(" + CONTENT_COLS.length + ", 1fr)";
+  var contentPeople = state.people.filter(function(p){
+    var roles = state.peopleRoles[p]||[];
+    return roles.length===0 || roles.some(function(r){return["Editor","Content Team","Intern"].includes(r);});
+  });
+  if(contentPeople.length===0) contentPeople = state.people;
+
+  var wfMap = {
+    "TSG Organic Reel":"Sorted Girl \u2014 Organic Reels",
+    "TSG Paid / Branded":"Sorted Girl \u2014 Branded Deal",
+    "SYM Reel":"SYM \u2014 Reels",
+    "SYM Carousel":"SYM \u2014 Carousels",
+    "SYM Planning":"SYM \u2014 Content Planning"
+  };
+
+  var html = [];
+  html.push('<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;">');
+  html.push('<div><div style="font-size:16px;font-weight:700;color:#1B2A4A;margin-bottom:2px;">Content Planner</div>');
+  html.push('<div style="font-size:12px;color:#8A94A6;">Weekly editing line-up — manual + auto from logs</div></div>');
+  html.push('<div class="week-nav">');
+  html.push('<button class="week-nav-btn" onclick="contentWeekOffset--;renderContentPlanner()">&#x2039;</button>');
+  html.push('<span class="week-label">' + weekLabel(contentWeekOffset) + '</span>');
+  html.push('<button class="week-nav-btn" onclick="contentWeekOffset++;renderContentPlanner()">&#x203A;</button>');
+  html.push('</div></div>');
+  html.push('<div class="planner-wrap"><div style="min-width:700px;">');
+  html.push('<div style="display:grid;grid-template-columns:' + gridCols + ';background:#1B2A4A;border-radius:10px 10px 0 0;overflow:hidden;">');
+  html.push('<div class="planner-col-head" style="text-align:left;">Person</div>');
+  CONTENT_COLS.forEach(function(c){ html.push('<div class="planner-col-head">' + c + '</div>'); });
+  html.push('</div>');
+  html.push('<div style="border:0.5px solid #E2E5EF;border-top:none;border-radius:0 0 10px 10px;overflow:hidden;">');
+
+  contentPeople.forEach(function(p) {
+    var pi = Math.max(0, state.people.indexOf(p)) % AV_COLORS.length;
+    var ini = p.split(" ").map(function(w){return w[0];}).join("").slice(0,2).toUpperCase();
+    var roles = state.peopleRoles[p] || [];
+    html.push('<div class="planner-row" style="display:grid;grid-template-columns:' + gridCols + ';">');
+    html.push('<div class="planner-person-cell" style="flex-direction:column;align-items:flex-start;gap:4px;">');
+    html.push('<div style="display:flex;align-items:center;gap:6px;">');
+    html.push('<div class="avatar" style="background:' + AV_COLORS[pi] + ';color:' + AV_FGS[pi] + ';width:28px;height:28px;font-size:10px;">' + ini + '</div>');
+    html.push('<span style="font-size:12px;font-weight:600;color:#1B2A4A;">' + p + '</span></div>');
+    if(roles.length) html.push('<span style="font-size:10px;color:#8A94A6;">' + roles.slice(0,2).join(", ") + '</span>');
+    html.push('</div>');
+
+    CONTENT_COLS.forEach(function(col) {
+      var autoCards = getAutoCardsContent(p, col, weekDts);
+      var mKey = "c_" + p + "_" + col + "_" + contentWeekOffset;
+      var manualCards = state.contentCards[mKey] || [];
+      var colWFName = wfMap[col];
+      var colWF = WORKFLOWS[colWFName] || {color:"#888", light:"#F5F5F5"};
+
+      html.push('<div class="planner-cell">');
+      autoCards.forEach(function(c) {
+        html.push(mkCard(c.brand, c.task, c.date, colWF.light, colWF.color, true, null));
+      });
+      manualCards.forEach(function(c, ci) {
+        var delFn = "deleteContentCard(" + JSON.stringify(p) + "," + JSON.stringify(col) + "," + ci + ")";
+        html.push(mkCard(c.brand, c.task, c.date, colWF.light, colWF.color, false, delFn));
+      });
+      var addFn = "openAddCard(" + JSON.stringify("content") + "," + JSON.stringify(p) + "," + JSON.stringify(col) + ")";
+      html.push('<button class="add-card-btn" onclick="' + addFn + '">+ Add</button>');
+      html.push('</div>');
+    });
+    html.push('</div>');
+  });
+
+  html.push('</div></div></div>');
+  document.getElementById("tab-content-planner").innerHTML = html.join('');
+}
+
+function deleteContentCard(person, col, idx){
+  var key = "c_" + person + "_" + col + "_" + contentWeekOffset;
+  if(!state.contentCards[key]) return;
+  state.contentCards[key].splice(idx, 1);
+  lsSet("trk3_ccards", state.contentCards);
+  renderContentPlanner();
+}
+
+// ── ADD CARD MODAL ─────────────────────────────────────────────────────────────
+var addCardContext = {};
+
+function openAddCard(plannerType, person, col){
+  addCardContext = {type:plannerType, person:person, col:col};
+  var existing = document.getElementById("modal-addcard");
+  if(!existing){
+    var modal = document.createElement("div");
+    modal.id = "modal-addcard";
+    modal.className = "modal-overlay";
+    modal.innerHTML = '<div class="modal" style="max-width:420px;">'+
+      '<div class="modal-title"><span>Add card</span><button class="modal-close" onclick="document.getElementById(&quot;modal-addcard&quot;).classList.add(&quot;hidden&quot;)">&#xD7;</button></div>'+
+      '<div class="field"><label>Brand / Project name</label><input class="input" id="addcard-brand" placeholder="e.g. Hasti"/></div>'+
+      '<div class="field"><label>Task / Description</label><input class="input" id="addcard-task" placeholder="e.g. Positioning statement"/></div>'+
+      '<div class="field"><label>Due date (optional)</label><input type="date" id="addcard-date"/></div>'+
+      '<button class="btn-primary" style="width:100%" onclick="saveAddCard()">Add card</button>'+
+    '</div>';
+    modal.addEventListener("click",function(e){if(e.target===modal)modal.classList.add("hidden");});
+    document.body.appendChild(modal);
+  }
+  document.getElementById("addcard-brand").value="";
+  document.getElementById("addcard-task").value="";
+  document.getElementById("addcard-date").value="";
+  document.getElementById("modal-addcard").classList.remove("hidden");
+  setTimeout(function(){document.getElementById("addcard-brand").focus();},100);
+}
+
+function saveAddCard(){
+  var brand = document.getElementById("addcard-brand").value.trim();
+  var task  = document.getElementById("addcard-task").value.trim();
+  var date  = document.getElementById("addcard-date").value;
+  if(!brand) return;
+  var card = {brand:brand, task:task, date:date||null};
+  if(addCardContext.type==="strategy"){
+    var key="s_"+addCardContext.person+"_"+addCardContext.col+"_"+plannerWeekOffset;
+    if(!state.strategyCards[key]) state.strategyCards[key]=[];
+    state.strategyCards[key].push(card);
+    lsSet("trk3_scards",state.strategyCards);
+    document.getElementById("modal-addcard").classList.add("hidden");
+    renderStrategyPlanner();
+  } else {
+    var key2="c_"+addCardContext.person+"_"+addCardContext.col+"_"+contentWeekOffset;
+    if(!state.contentCards[key2]) state.contentCards[key2]=[];
+    state.contentCards[key2].push(card);
+    lsSet("trk3_ccards",state.contentCards);
+    document.getElementById("modal-addcard").classList.add("hidden");
+    renderContentPlanner();
+  }
+}
+
+function toggleRole(person, role){
+  if(!state.peopleRoles[person]) state.peopleRoles[person]=[];
+  var roles=state.peopleRoles[person];
+  var idx=roles.indexOf(role);
+  if(idx>=0) roles.splice(idx,1);
+  else roles.push(role);
+  state.peopleRoles[person]=roles;
+  lsSet("trk3_roles",state.peopleRoles);
+  renderSettings();
 }
 
 function closeModal(id){ document.getElementById(id).classList.add("hidden"); }
