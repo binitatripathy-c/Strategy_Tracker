@@ -121,7 +121,8 @@
       }
       function addPerson(){const t=newPerson.trim();if(!t||editPeople.includes(t))return;setEditPeople(ep=>[...ep,t]);setNewPerson("");}
       function addProject(){const t=newProject.trim();if(!t||editProjects.includes(t))return;setEditProjects(ep=>[...ep,t]);setNewProject("");}
-
+function deleteEntry(id){const next=entries.filter(e=>e.id!==id);setEntries(next);lsSet("trk_entries",next);}
+      function editEntry(id,field,val){const next=entries.map(e=>e.id===id?{...e,[field]:field==="grade"?Number(val):val}:e);setEntries(next);lsSet("trk_entries",next);}
       const ready=name&&project&&stage&&grade!==null;
       const filteredLog=entries.filter(e=>(filterPerson==="All"||e.name===filterPerson)&&(filterProject==="All"||e.project===filterProject));
       const activeProjects=projects.filter(p=>entries.find(e=>e.project===p));
@@ -222,8 +223,8 @@
                 :React.createElement('div',{style:{overflowX:"auto"}},
                   React.createElement('table',{style:{width:"100%",borderCollapse:"collapse",fontSize:12,tableLayout:"fixed"}},
                     React.createElement('thead',null,React.createElement('tr',{style:{background:"#0B6E6E"}},
-                      ...["Date","Name","Project","Stage","Grade"].map((h,i)=>
-                        React.createElement('th',{key:h,style:{padding:"8px 10px",textAlign:h==="Grade"?"center":"left",color:"#fff",fontWeight:600,fontSize:11,width:[80,110,110,160,60][i]}},h)
+                     ...["Date","Name","Project","Stage","Grade",""].map((h,i)=>
+                        React.createElement('th',{key:h,style:{padding:"8px 10px",textAlign:h==="Grade"?"center":"left",color:"#fff",fontWeight:600,fontSize:11,width:[80,110,110,140,60,50][i]}},h)
                       )
                     )),
                     React.createElement('tbody',null,
@@ -235,7 +236,16 @@
                           ),
                           React.createElement('td',{style:{padding:"9px 10px",borderBottom:"0.5px solid #E2E5EF",fontWeight:500,fontSize:12}},e.project),
                           React.createElement('td',{style:{padding:"9px 10px",borderBottom:"0.5px solid #E2E5EF",color:"#8A94A6",fontSize:11}},e.stage),
-                          React.createElement('td',{style:{padding:"9px 10px",borderBottom:"0.5px solid #E2E5EF",textAlign:"center"}},React.createElement(GradePill,{grade:e.grade}))
+                          React.createElement('td',{style:{padding:"9px 10px",borderBottom:"0.5px solid #E2E5EF",textAlign:"center"}},React.createElement(GradePill,{grade:e.grade})),
+                          React.createElement('td',{style:{padding:"9px 10px",borderBottom:"0.5px solid #E2E5EF",textAlign:"center"}},
+                            React.createElement('div',{style:{display:"flex",gap:4,justifyContent:"center"}},
+                              React.createElement('select',{defaultValue:e.grade,onChange:ev=>editEntry(e.id,"grade",ev.target.value),title:"Change grade",style:{width:36,height:24,borderRadius:4,border:"0.5px solid #E2E5EF",fontSize:11,background:"#F5F6FA",cursor:"pointer",color:"#1A1A2E"}},
+                                ...[0,1,2,3,4,5].map(g=>React.createElement('option',{key:g,value:g},g))
+                              ),
+                              React.createElement('button',{onClick:()=>{if(window.confirm("Delete this entry?"))deleteEntry(e.id);},title:"Delete",style:{width:24,height:24,borderRadius:4,border:"0.5px solid #FCEBEB",background:"#FCEBEB",color:"#A32D2D",fontSize:12,cursor:"pointer",fontWeight:600}},"×")
+                            )
+                          )
+                        )
                         )
                       )
                     )
