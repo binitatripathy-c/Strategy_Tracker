@@ -91,7 +91,7 @@ textarea.input{height:64px;padding:10px 12px;resize:vertical;}
 .filter-sel{height:30px;border-radius:6px;border:0.5px solid #E2E5EF;padding:0 8px;font-size:12px;background:#F5F6FA;outline:none;color:#1A1A2E;font-family:inherit;}
 .gcal-btn{background:#4285F4;color:#fff;border:none;border-radius:5px;padding:2px 7px;font-size:10px;cursor:pointer;font-weight:600;text-decoration:none;display:inline-block;}
 /* People */
-.people-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px;}
+.people-grid{display:grid;grid-template-columns:1fr;gap:12px;margin-bottom:14px;}
 .person-card{background:#fff;border-radius:12px;border:0.5px solid #E2E5EF;padding:16px;}
 .mini-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:10px;}
 .mini-stat{border-radius:7px;padding:7px 8px;text-align:center;}
@@ -404,7 +404,10 @@ function renderPipeline(){
     h.push('<span style="font-size:14px;font-weight:600;color:#1B2A4A;">'+p.name+'</span>');
     h.push('<span class="tag" style="background:'+wfc.l+';color:'+wfc.c+';">'+p.wf+'</span>');
     h.push('<span class="badge" style="background:'+ps.bg+';color:'+ps.fg+';">'+ps.label+'</span>');
-    if(p.lead)h.push(av(p.lead,22));
+    if(p.lead){
+      h.push(av(p.lead,22));
+      h.push('<span style="font-size:11px;color:#8A94A6;">'+p.lead+'</span>');
+    }
     h.push('</div>');
     h.push('<div style="display:flex;align-items:center;gap:8px;margin-top:5px;">');
     h.push('<div style="flex:1;height:4px;border-radius:2px;background:#EEF0F5;overflow:hidden;max-width:200px;"><div style="height:100%;width:'+pct+'%;background:'+wfc.c+';border-radius:2px;"></div></div>');
@@ -751,49 +754,153 @@ async function saveEvent(){
 }
 
 // ── PEOPLE ─────────────────────────────────────────────────────────────────────
+var peopleSubTab = "daily";
+
 function renderPeople(){
-  var h=[];
-  h.push('<div class="people-grid">');
-  PEOPLE.forEach(function(p){
-    var pProjs=state.projects.filter(function(pr){return pr.lead===p;});
-    var pEvents=state.events.filter(function(ev){return ev.person===p;});
-    var clientEvs=pEvents.filter(function(ev){return ev.type==="brief-call"||ev.type==="presentation";});
-    var ongoingProjs=pProjs.filter(function(pr){var s=calcProjStatus(pr);return s.label!=="Done";});
-    var i=PEOPLE.indexOf(p);
-    var ini=p[0].toUpperCase();
-    h.push('<div class="person-card">');
-    h.push('<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">');
-    h.push('<div class="avatar" style="width:38px;height:38px;font-size:14px;background:'+AV_COLORS[i]+';color:'+AV_FGS[i]+';">'+ini+'</div>');
-    h.push('<div><div style="font-size:14px;font-weight:600;color:#1B2A4A;">'+p+'</div><div style="font-size:11px;color:#8A94A6;">'+ongoingProjs.length+' active project'+(ongoingProjs.length!==1?'s':'')+'</div></div>');
-    var bwLabel=ongoingProjs.length===0?"Available":ongoingProjs.length<=2?"Healthy":ongoingProjs.length===3?"At Capacity":"Overloaded";
-    var bwBg=ongoingProjs.length===0?"#E6F1FB":ongoingProjs.length<=2?"#EAF3DE":ongoingProjs.length===3?"#FFF3CD":"#FCEBEB";
-    var bwFg=ongoingProjs.length===0?"#185FA5":ongoingProjs.length<=2?"#3B6D11":ongoingProjs.length===3?"#856404":"#A32D2D";
-    h.push('<span class="badge" style="background:'+bwBg+';color:'+bwFg+';margin-left:auto;">'+bwLabel+'</span>');
-    h.push('</div>');
-    h.push('<div class="mini-stats">');
-    h.push('<div class="mini-stat" style="background:#EBF0FA;"><div style="font-size:10px;color:#4A6FA5;font-weight:500;">Projects</div><div style="font-size:18px;font-weight:700;color:#4A6FA5;">'+pProjs.length+'</div></div>');
-    h.push('<div class="mini-stat" style="background:#FAEEDA;"><div style="font-size:10px;color:#854F0B;font-weight:500;">Events</div><div style="font-size:18px;font-weight:700;color:#854F0B;">'+pEvents.length+'</div></div>');
-    h.push('<div class="mini-stat" style="background:#FDECEA;"><div style="font-size:10px;color:#E53935;font-weight:500;">Client mtgs</div><div style="font-size:18px;font-weight:700;color:#E53935;">'+clientEvs.length+'</div></div>');
-    h.push('</div>');
-    if(pProjs.length){
-      h.push('<div style="margin-top:12px;"><div style="font-size:10px;font-weight:600;color:#8A94A6;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;">Active projects</div>');
-      pProjs.slice(0,4).forEach(function(pr){
-        var ps=calcProjStatus(pr);var wfc=WF_COLORS[pr.wf]||WF_COLORS["Other"];
-        h.push('<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;"><div style="width:6px;height:6px;border-radius:50%;background:'+wfc.c+';flex-shrink:0;"></div><span style="font-size:12px;flex:1;">'+pr.name+'</span><span class="badge" style="background:'+ps.bg+';color:'+ps.fg+';font-size:10px;">'+ps.label+'</span></div>');
-      });
-      h.push('</div>');
-    }
-    h.push('</div>');
+  var h = [];
+  // Sub-tab bar
+  h.push('<div style="display:flex;gap:2px;background:#F4F5F9;border-radius:8px;padding:3px;width:fit-content;margin-bottom:16px;">');
+  ["daily","weekly","monthly"].forEach(function(t){
+    var labels={daily:"Daily",weekly:"Weekly",monthly:"Monthly"};
+    var active=peopleSubTab===t;
+    h.push('<button onclick="peopleSubTab=&quot;'+t+'&quot;;renderPeople()" style="padding:6px 16px;border-radius:6px;border:none;font-size:12px;font-weight:500;cursor:pointer;background:'+(active?"#fff":"none")+';color:'+(active?"#1B2A4A":"#8A94A6")+';font-family:inherit;">'+labels[t]+'</button>');
   });
   h.push('</div>');
+
+  var today = todayISO();
+  var monISO = getMondayISO(0);
+  var sunISO = addDays(monISO, 6);
+  var now = new Date();
+  var yr = now.getFullYear(); var mo = now.getMonth();
+  var monthStart = yr+"-"+String(mo+1).padStart(2,"0")+"-01";
+  var lastDay = new Date(yr,mo+1,0).getDate();
+  var monthEnd = yr+"-"+String(mo+1).padStart(2,"0")+"-"+String(lastDay).padStart(2,"0");
+
+  function evInRange(ev, from, to){ return ev.date>=from && ev.date<=to; }
+  function projActive(pr, from, to){
+    if(!pr.startDate||!pr.endDate) return false;
+    return pr.startDate<=to && pr.endDate>=from;
+  }
+
+  PEOPLE.forEach(function(p){
+    var i = PEOPLE.indexOf(p);
+    var ini = p[0].toUpperCase();
+    var bwColor = [AV_COLORS[i], AV_FGS[i]];
+
+    var pProjs, pEvents;
+    if(peopleSubTab==="daily"){
+      pEvents = state.events.filter(function(ev){return ev.person===p && ev.date===today;});
+      pProjs = state.projects.filter(function(pr){
+        return pr.lead===p && pr.stages.some(function(s){
+          return s.deadline===today || s.status==="ongoing" || s.status==="started";
+        });
+      });
+    } else if(peopleSubTab==="weekly"){
+      pEvents = state.events.filter(function(ev){return ev.person===p && evInRange(ev,monISO,sunISO);});
+      pProjs = state.projects.filter(function(pr){return pr.lead===p && projActive(pr,monISO,sunISO);});
+    } else {
+      pEvents = state.events.filter(function(ev){return ev.person===p && evInRange(ev,monthStart,monthEnd);});
+      pProjs = state.projects.filter(function(pr){return pr.lead===p;});
+    }
+
+    var clientEvs = pEvents.filter(function(ev){return ev.type==="brief-call"||ev.type==="presentation";});
+    var followUps = pEvents.filter(function(ev){return ev.type&&ev.type.startsWith("followup");});
+    var ongoingProjs = state.projects.filter(function(pr){var s=calcProjStatus(pr);return pr.lead===p&&s.label!=="Done";});
+    var bwLabel = ongoingProjs.length===0?"Available":ongoingProjs.length<=2?"Healthy":ongoingProjs.length===3?"At Capacity":"Overloaded";
+    var bwBg = ongoingProjs.length===0?"#E6F1FB":ongoingProjs.length<=2?"#EAF3DE":ongoingProjs.length===3?"#FFF3CD":"#FCEBEB";
+    var bwFg = ongoingProjs.length===0?"#185FA5":ongoingProjs.length<=2?"#3B6D11":ongoingProjs.length===3?"#856404":"#A32D2D";
+    var atRisk = pProjs.filter(function(pr){var s=calcProjStatus(pr);return s.label==="At Risk"||s.label==="Overdue";});
+
+    h.push('<div class="card" style="margin-bottom:12px;">');
+    // Header
+    h.push('<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding-bottom:12px;border-bottom:0.5px solid #EEF0F5;">');
+    h.push('<div class="avatar" style="width:38px;height:38px;font-size:14px;background:'+AV_COLORS[i]+';color:'+AV_FGS[i]+';">'+ini+'</div>');
+    h.push('<div style="flex:1;"><div style="font-size:15px;font-weight:600;color:#1B2A4A;">'+p+'</div>');
+    var rangeLabel = peopleSubTab==="daily"?("Today — "+fromISO(today)):peopleSubTab==="weekly"?(fromISO(monISO)+" — "+fromISO(sunISO)):(["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][mo]+" "+yr);
+    h.push('<div style="font-size:11px;color:#8A94A6;">'+rangeLabel+'</div></div>');
+    h.push('<span class="badge" style="background:'+bwBg+';color:'+bwFg+';">'+bwLabel+'</span>');
+    h.push('</div>');
+
+    // Stats
+    h.push('<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;">');
+    h.push('<div class="mini-stat" style="background:#EBF0FA;"><div style="font-size:10px;color:#4A6FA5;font-weight:500;">Projects</div><div style="font-size:18px;font-weight:700;color:#4A6FA5;">'+pProjs.length+'</div></div>');
+    h.push('<div class="mini-stat" style="background:#FDECEA;"><div style="font-size:10px;color:#E53935;font-weight:500;">Client meetings</div><div style="font-size:18px;font-weight:700;color:#E53935;">'+clientEvs.length+'</div></div>');
+    h.push('<div class="mini-stat" style="background:#FBF2E6;"><div style="font-size:10px;color:#C07C2B;font-weight:500;">Follow-ups</div><div style="font-size:18px;font-weight:700;color:#C07C2B;">'+followUps.length+'</div></div>');
+    h.push('<div class="mini-stat" style="background:#E8F5EF;"><div style="font-size:10px;color:#2E7D5E;font-weight:500;">Events</div><div style="font-size:18px;font-weight:700;color:#2E7D5E;">'+pEvents.length+'</div></div>');
+    h.push('</div>');
+
+    // Two col: projects + events
+    h.push('<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">');
+
+    // Projects col
+    h.push('<div><div style="font-size:11px;font-weight:600;color:#8A94A6;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:7px;">Projects</div>');
+    if(pProjs.length){
+      pProjs.forEach(function(pr){
+        var ps=calcProjStatus(pr); var wfc=WF_COLORS[pr.wf]||WF_COLORS["Other"];
+        var done=pr.stages.filter(function(s){return s.status==="completed";}).length;
+        var pct=pr.stages.length?Math.round((done/pr.stages.length)*100):0;
+        var overdue=pr.stages.filter(function(s){return s.deadline&&todayISO()>s.deadline&&s.status!=="completed";}).length;
+        var curr=pr.stages.find(function(s){return s.status==="ongoing"||s.status==="started";});
+        h.push('<div style="padding:9px 11px;border-radius:8px;border:0.5px solid #EEF0F5;margin-bottom:6px;background:#F9FAFB;">');
+        h.push('<div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;">');
+        h.push('<div style="width:7px;height:7px;border-radius:50%;background:'+wfc.c+';flex-shrink:0;"></div>');
+        h.push('<span style="font-size:12px;font-weight:600;flex:1;">'+pr.name+'</span>');
+        h.push('<span class="badge" style="background:'+ps.bg+';color:'+ps.fg+';font-size:10px;">'+ps.label+'</span>');
+        h.push('</div>');
+        h.push('<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">');
+        h.push('<div style="flex:1;height:3px;border-radius:2px;background:#EEF0F5;overflow:hidden;"><div style="height:100%;width:'+pct+'%;background:'+wfc.c+'"></div></div>');
+        h.push('<span style="font-size:10px;color:#8A94A6;">'+pct+'%</span>');
+        h.push('</div>');
+        if(curr)h.push('<div style="font-size:10px;color:#8A94A6;">&#x25B6; '+curr.stage+'</div>');
+        if(overdue)h.push('<div style="font-size:10px;color:#A32D2D;font-weight:600;">&#9888; '+overdue+' stage'+(overdue>1?'s':'')+' overdue</div>');
+        h.push('</div>');
+      });
+    } else {
+      h.push('<div style="font-size:12px;color:#B4B2A9;font-style:italic;padding:8px 0;">No active projects '+( peopleSubTab==="daily"?"today":peopleSubTab==="weekly"?"this week":"this month")+'</div>');
+    }
+    h.push('</div>');
+
+    // Events col
+    h.push('<div><div style="font-size:11px;font-weight:600;color:#8A94A6;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:7px;">Calendar</div>');
+    if(pEvents.length){
+      var sorted=pEvents.slice().sort(function(a,b){return a.date>b.date?1:-1;});
+      sorted.slice(0,8).forEach(function(ev){
+        var et=EVENT_TYPES[ev.type]||{label:ev.type,color:"#888",bg:"#F5F5F5"};
+        var isClient=ev.type==="brief-call"||ev.type==="presentation";
+        h.push('<div style="display:flex;align-items:center;gap:7px;padding:6px 9px;border-radius:7px;border:0.5px solid '+(isClient?"#F7C1C1":"#EEF0F5")+';margin-bottom:5px;background:'+(isClient?"#FFF5F5":"#fff")+';border-left:3px solid '+et.color+';">');
+        h.push('<div style="flex:1;"><div style="font-size:11px;font-weight:600;color:'+(isClient?"#E53935":"#1B2A4A")+';">'+ev.brand+'</div><div style="font-size:10px;color:#8A94A6;">'+et.label+'</div></div>');
+        h.push('<span style="font-size:10px;color:#8A94A6;white-space:nowrap;">'+fromISO(ev.date)+(ev.time?' · '+ev.time:'')+'</span>');
+        h.push('</div>');
+      });
+    } else {
+      h.push('<div style="font-size:12px;color:#B4B2A9;font-style:italic;padding:8px 0;">No events '+(peopleSubTab==="daily"?"today":peopleSubTab==="weekly"?"this week":"this month")+'</div>');
+    }
+    h.push('</div>');
+    h.push('</div>'); // end two col
+
+    // At risk banner
+    if(atRisk.length){
+      h.push('<div style="margin-top:12px;padding:9px 12px;background:#FFF5F5;border-radius:8px;border:0.5px solid #F7C1C1;">');
+      h.push('<div style="font-size:11px;font-weight:600;color:#A32D2D;margin-bottom:3px;">&#9888; Needs attention</div>');
+      atRisk.forEach(function(pr){var ps=calcProjStatus(pr);h.push('<div style="font-size:11px;color:#A32D2D;">'+pr.name+' — '+ps.label+'</div>');});
+      h.push('</div>');
+    }
+
+    h.push('</div>'); // end card
+  });
+
   // AI
   h.push('<div class="card">');
-  h.push('<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;"><div><div style="font-size:13px;font-weight:600;color:#1B2A4A;margin-bottom:2px;">AI Pipeline Analysis</div><div style="font-size:11px;color:#8A94A6;">Project health, bandwidth, recommendations</div></div><button class="btn btn-navy" onclick="runAnalysis()">Analyse</button></div>');
+  h.push('<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">');
+  h.push('<div><div style="font-size:13px;font-weight:600;color:#1B2A4A;margin-bottom:2px;">AI Pipeline Analysis</div><div style="font-size:11px;color:#8A94A6;">Workload balance, project health, recommendations</div></div>');
+  h.push('<button class="btn btn-navy" onclick="runAnalysis()">Analyse</button></div>');
   if(state.analysisText)h.push('<div class="analysis-box">'+state.analysisText+'</div>');
-  else h.push('<div style="font-size:12px;color:#B4B2A9;font-style:italic;text-align:center;padding:16px 0;">Click "Analyse" to generate an AI summary</div>');
+  else h.push('<div style="font-size:12px;color:#B4B2A9;font-style:italic;text-align:center;padding:16px 0;">Click "Analyse" for an AI summary</div>');
   h.push('</div>');
+
   document.getElementById("tab-people").innerHTML=h.join('');
 }
+
 state.analysisText="";
 async function runAnalysis(){
   state.analysisText="Analysing...";renderPeople();
