@@ -181,6 +181,849 @@ textarea.input{height:64px;padding:10px 12px;resize:vertical;}
     <div id="stage-date-info" style="font-size:13px;color:#1B2A4A;font-weight:600;margin-bottom:14px;"></div>
     <div class="field"><label>New deadline</label><input type="date" id="stage-date-input"/></div>
     <div id="stage-date-old" style="font-size:12px;color:#8A94A6;margin-bottom:14px;"></div>
+    <div class="field"><label>Note</label><textarea class="input" id="stage-note" placeholder="Add a note for this stage..." style="height:58px;"></textarea></div>
+    <div class="field"><label>Status</label>
+      <div class="status-btns">
+        <button class="status-btn" id="sdbtn-started" onclick="setStageDateStatus('started')">Started</button>
+        <button class="status-btn" id="sdbtn-ongoing" onclick="setStageDateStatus('ongoing')">Ongoing</button>
+        <button class="status-btn" id="sdbtn-completed" onclick="setStageDateStatus('completed')">Completed</button>
+      </div>
+    </div>
+    <button class="btn-primary" style="width:100%" onclick="saveStageDateEdit()">Save</button>
+  </div>
+</div>
+
+<!-- EVENT MODAL -->
+<div class="modal-overlay hidden" id="modal-event">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-title"><span id="modal-event-title">Add to Calendar</span><button class="modal-close" onclick="closeModal('modal-event')">&#x00D7;</button></div>
+    <div class="two-col">
+      <div class="field"><label>Brand *</label><select class="input" id="ev-brand"><option value="">Select project...</option></select></div>
+      <div class="field"><label>Person *</label>
+        <select class="input" id="ev-person">
+          <option value="">Select...</option><option>Tanya</option><option>Shipra</option><option>Binita</option>
+        </select>
+      </div>
+    </div>
+    <div class="field"><label>Activity type *</label>
+      <select class="input" id="ev-type" onchange="onEvTypeChange()">
+        <option value="">Select...</option>
+        <option value="brief-call">Brief Call</option>
+        <option value="presentation">Client Presentation</option>
+        <option value="followup-1">Follow-up (1st)</option>
+        <option value="followup-2">Follow-up (2nd)</option>
+        <option value="followup-3">Follow-up (3rd)</option>
+        <option value="submission">Internal Submission</option>
+        <option value="major">Major Project Milestone</option>
+      </select>
+    </div>
+    <div class="two-col">
+      <div class="field"><label>Date *</label><input type="date" id="ev-date"/></div>
+      <div class="field" id="ev-time-field" style="display:none;"><label>Time</label><input type="time" id="ev-time"/></div>
+    </div>
+    <div class="field"><label>Notes</label><input class="input" id="ev-notes" placeholder="Optional"/></div>
+    <div id="ev-err" style="color:#A32D2D;font-size:12px;margin-bottom:10px;display:none;"></div>
+    <button class="btn-primary" style="width:100%" onclick="saveEvent()">Save event</button>
+  </div>
+</div>
+
+<!-- EVENT DETAIL MODAL -->
+<div class="modal-overlay hidden" id="modal-event-detail">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-title"><span>Event details</span><button class="modal-close" onclick="closeModal('modal-event-detail')">&#x00D7;</button></div>
+    <div id="event-detail-content"></div>
+    <div style="display:flex;gap:8px;margin-top:16px;">
+      <button class="btn-ghost" style="flex:1;" onclick="editEventFromDetail()">Edit</button>
+      <button class="btn-danger" style="flex:1;" onclick="deleteEventFromDetail()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Supabase ───────────────────────────────────────────────────────────────────
+var SUPA_URL = "https://ctqjyvazjvgrtquhkckc.supabase.co";
+var SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN0cWp5dmF6anZncnRxdWhrY2tjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4NzY0OTEsImV4cCI6MjA5MzQ1MjQ5MX0.9wge_lu-GcEy6jYTj2VDJXM6X42VSR-oqopvEazPsM4";
+var supa = window.supabase.createClient(SUPA_URL, SUPA_KEY);
+
+function setSyncBadge(msg,cls){var el=document.getElementById("sync-badge");el.textContent=msg;el.className="sync-badge "+cls;if(cls==="sync-ok")setTimeout(function(){el.textContent="Synced";},1500);}
+
+async function dbUpsert(table,idField,idVal,data){var obj={};obj[idField]=idVal;obj.data=data;var r=await supa.from(table).upsert(obj);if(r.error)setSyncBadge("Save error","sync-err");else setSyncBadge("Saved","sync-ok");}
+async function dbDelete(table,idField,idVal){await supa.from(table).delete().eq(idField,idVal);}
+async function dbGetAll(table){var r=await supa.from(table).select("*");return r.data||[];}
+async function dbGetKey(key){var r=await supa.from("settings").select("data").eq("key",key).single();return r.data?r.data.data:null;}
+async function dbSetKey(key,val){await supa.from("settings").upsert({key:key,data:val});}
+
+// ── State ──────────────────────────────────────────────────────────────────────
+var state={
+  projects:[], events:[], activeTab:"pipeline",
+  calOffset:0, calView:"person", filterPerson:"All", filterType:"All",
+  editingEventId:null, stageDragCtx:{projectId:null,dragIdx:null},
+  stageDateCtx:{projectId:null,stageIdx:null,status:null},
+  tempStages:[], editingProjectId:null
+};
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
+function fmtDate(d){if(!d)d=new Date();return d.getDate()+"-"+["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getMonth()]+"-"+String(d.getFullYear()).slice(2);}
+function fromISO(s){if(!s)return"";var d=new Date(s+"T12:00:00");return fmtDate(d);}
+function todayISO(){return new Date().toISOString().slice(0,10);}
+function daysBetween(a,b){return Math.round((new Date(b)-new Date(a))/86400000);}
+function addDays(iso,n){var d=new Date(iso+"T12:00:00");d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);}
+function getMondayISO(offset){var d=new Date();var day=d.getDay();var diff=d.getDate()-(day===0?6:day-1);d.setDate(diff+offset*7);d.setHours(0,0,0,0);return d.toISOString().slice(0,10);}
+function weekLabel(offset){var s=getMondayISO(offset);var e=addDays(s,6);return fromISO(s)+" — "+fromISO(e);}
+function escJs(s){return(s||"").replace(/\\/g,"\\\\").replace(/'/g,"\\'");}
+
+var WF_COLORS={
+  "Brand Comm Strategy":{c:"#4A6FA5",l:"#EBF0FA"},
+  "Content Strategy":{c:"#0B6E6E",l:"#E6F5F5"},
+  "Brand Identity":{c:"#7B4FBE",l:"#F2ECF9"},
+  "Other":{c:"#546E7A",l:"#EDF1F3"}
+};
+var AV_COLORS=["#E6F1FB","#EAF3DE","#FAEEDA"];
+var AV_FGS=["#0C447C","#27500A","#633806"];
+var PEOPLE=["Tanya","Shipra","Binita"];
+
+function av(name,size){size=size||28;var i=PEOPLE.indexOf(name)%3;var ini=(name||"?").split(" ").map(function(w){return w[0];}).join("").slice(0,2).toUpperCase();return'<div class="avatar" style="width:'+size+'px;height:'+size+'px;font-size:'+(size<30?10:12)+'px;background:'+AV_COLORS[Math.max(0,i)]+';color:'+AV_FGS[Math.max(0,i)]+';">'+ini+'</div>';}
+
+function statusBadge(s){
+  var m={started:{bg:"#E8F1FB",fg:"#1565A0",label:"Started"},ongoing:{bg:"#FBF2E6",fg:"#C07C2B",label:"Ongoing"},completed:{bg:"#C0DD97",fg:"#27500A",label:"Completed"}};
+  var v=m[s]||{bg:"#F1EFE8",fg:"#8A94A6",label:"Not started"};
+  return'<span class="badge" style="background:'+v.bg+';color:'+v.fg+';">'+v.label+'</span>';
+}
+
+function calcProjStatus(p){
+  var t=todayISO();if(!p.startDate||!p.endDate)return{label:"No dates",bg:"#F1EFE8",fg:"#8A94A6"};
+  var done=p.stages.filter(function(s){return s.status==="completed";}).length;
+  if(done===p.stages.length)return{label:"Done",bg:"#C0DD97",fg:"#27500A"};
+  if(t>p.endDate)return{label:"Overdue",bg:"#FCEBEB",fg:"#A32D2D"};
+  var total=daysBetween(p.startDate,p.endDate),elapsed=daysBetween(p.startDate,t);
+  var pct=(done/p.stages.length)*100,expected=(elapsed/total)*100;
+  if(pct>=expected-20)return{label:"On Track",bg:"#EAF3DE",fg:"#3B6D11"};
+  return{label:"At Risk",bg:"#FFF3CD",fg:"#856404"};
+}
+
+var EVENT_TYPES={
+  "brief-call":{label:"Brief Call",color:"#E53935",bg:"#FDECEA",cls:"client-facing"},
+  "presentation":{label:"Client Presentation",color:"#E53935",bg:"#FDECEA",cls:"client-facing"},
+  "followup-1":{label:"Follow-up (1st)",color:"#C07C2B",bg:"#FBF2E6",cls:"follow-up"},
+  "followup-2":{label:"Follow-up (2nd)",color:"#C07C2B",bg:"#FBF2E6",cls:"follow-up"},
+  "followup-3":{label:"Follow-up (3rd)",color:"#C07C2B",bg:"#FBF2E6",cls:"follow-up"},
+  "submission":{label:"Internal Submission",color:"#2E7D5E",bg:"#E8F5EF",cls:"submission"},
+  "major":{label:"Major Milestone",color:"#4A6FA5",bg:"#EBF0FA",cls:"major"}
+};
+
+function gcalLink(ev){
+  var et=EVENT_TYPES[ev.type]||{label:ev.type};
+  var title=encodeURIComponent(ev.brand+" — "+et.label);
+  var date=(ev.date||todayISO()).replace(/-/g,"");
+  var start,end;
+  if(ev.time){var t=ev.time.replace(":","");var h=parseInt(ev.time.split(":")[0]);var endH=String(h+1).padStart(2,"0");var m=ev.time.split(":")[1];start=date+"T"+t+"00";end=date+"T"+endH+m+"00";}
+  else{start=date;end=date;}
+  return"https://calendar.google.com/calendar/render?action=TEMPLATE&text="+title+"&dates="+start+"/"+end+"&details="+encodeURIComponent(ev.notes||"");
+}
+
+// ── Load ───────────────────────────────────────────────────────────────────────
+async function loadAll(){
+  setSyncBadge("Loading...","sync-loading");
+  try{
+    var pRows=await dbGetAll("projects");
+    state.projects=pRows.map(function(r){return r.data;}).filter(Boolean);
+    var eRows=await dbGetAll("events");
+    state.events=eRows.map(function(r){return r.data;}).filter(Boolean);
+    setSyncBadge("Synced","sync-ok");
+  }catch(e){
+    setSyncBadge("Offline","sync-err");
+    try{var lp=localStorage.getItem("trk6_p");if(lp)state.projects=JSON.parse(lp);}catch(e2){}
+    try{var le=localStorage.getItem("trk6_e");if(le)state.events=JSON.parse(le);}catch(e2){}
+  }
+  switchTab("pipeline");
+}
+
+async function persistProject(proj){
+  localStorage.setItem("trk6_p",JSON.stringify(state.projects));
+  await dbUpsert("projects","id",proj.id,proj);
+}
+async function persistEvent(ev){
+  localStorage.setItem("trk6_e",JSON.stringify(state.events));
+  await dbUpsert("events","id",ev.id,ev);
+}
+async function deleteProject(id){
+  state.projects=state.projects.filter(function(p){return p.id!==id;});
+  localStorage.setItem("trk6_p",JSON.stringify(state.projects));
+  await dbDelete("projects","id",id);
+  renderPipeline();
+}
+async function deleteEvent(id){
+  state.events=state.events.filter(function(e){return e.id!==id;});
+  localStorage.setItem("trk6_e",JSON.stringify(state.events));
+  await dbDelete("events","id",id);
+  renderCalendar();
+}
+
+// ── Tab switching ──────────────────────────────────────────────────────────────
+function switchTab(t){
+  state.activeTab=t;
+  document.querySelectorAll(".tab").forEach(function(el){el.classList.toggle("active",el.dataset.tab===t);});
+  ["pipeline","calendar","people","settings"].forEach(function(id){document.getElementById("tab-"+id).classList.toggle("hidden",id!==t);});
+  if(t==="pipeline")renderPipeline();
+  else if(t==="calendar")renderCalendar();
+  else if(t==="people")renderPeople();
+  else if(t==="settings")renderSettings();
+}
+
+// ── PIPELINE ───────────────────────────────────────────────────────────────────
+function renderPipeline(){
+  var filterWf=(document.getElementById("pipe-filter-wf")||{}).value||"All";
+  var filterStatus=(document.getElementById("pipe-filter-status")||{}).value||"All";
+  var projects=state.projects.filter(function(p){
+    if(filterWf!=="All"&&p.wf!==filterWf)return false;
+    if(filterStatus!=="All"){var s=calcProjStatus(p);if(s.label!==filterStatus)return false;}
+    return true;
+  });
+
+  var h=[];
+  h.push('<div class="filter-row">');
+  h.push('<select class="filter-sel" id="pipe-filter-wf" onchange="renderPipeline()"><option value="All">All workflows</option><option>Brand Comm Strategy</option><option>Content Strategy</option><option>Brand Identity</option><option>Other</option></select>');
+  h.push('<select class="filter-sel" id="pipe-filter-status" onchange="renderPipeline()"><option value="All">All statuses</option><option>On Track</option><option>At Risk</option><option>Overdue</option><option>Done</option></select>');
+  h.push('</div>');
+
+  if(!projects.length){h.push('<div class="card"><div class="empty">No projects yet. Click "+ New project" to start.</div></div>');}
+
+  projects.forEach(function(p){
+    var wfc=WF_COLORS[p.wf]||WF_COLORS["Other"];
+    var ps=calcProjStatus(p);
+    var done=p.stages.filter(function(s){return s.status==="completed";}).length;
+    var pct=p.stages.length?Math.round((done/p.stages.length)*100):0;
+    var isOpen=p.open!==false;
+
+    h.push('<div class="pipeline-card" id="pcard-'+p.id+'">');
+    // Header
+    h.push('<div class="pipeline-header" onclick="toggleProject(\''+p.id+'\')">');
+    h.push('<div style="width:10px;height:10px;border-radius:50%;background:'+wfc.c+';flex-shrink:0;"></div>');
+    h.push('<div style="flex:1;">');
+    h.push('<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">');
+    h.push('<span style="font-size:14px;font-weight:600;color:#1B2A4A;">'+p.name+'</span>');
+    h.push('<span class="tag" style="background:'+wfc.l+';color:'+wfc.c+';">'+p.wf+'</span>');
+    h.push('<span class="badge" style="background:'+ps.bg+';color:'+ps.fg+';">'+ps.label+'</span>');
+    if(p.lead)h.push(av(p.lead,22));
+    h.push('</div>');
+    h.push('<div style="display:flex;align-items:center;gap:8px;margin-top:5px;">');
+    h.push('<div style="flex:1;height:4px;border-radius:2px;background:#EEF0F5;overflow:hidden;max-width:200px;"><div style="height:100%;width:'+pct+'%;background:'+wfc.c+';border-radius:2px;"></div></div>');
+    h.push('<span style="font-size:11px;color:#8A94A6;">'+done+'/'+p.stages.length+' · '+pct+'%</span>');
+    if(p.startDate)h.push('<span style="font-size:11px;color:#8A94A6;">'+fromISO(p.startDate)+' → '+fromISO(p.endDate)+'</span>');
+    h.push('</div></div>');
+    h.push('<div style="display:flex;gap:6px;align-items:center;margin-left:8px;">');
+    h.push('<button onclick="event.stopPropagation();openEditProject(\''+p.id+'\')" style="background:none;border:none;cursor:pointer;font-size:13px;color:#8A94A6;" title="Edit">&#x270E;</button>');
+    h.push('<button onclick="event.stopPropagation();if(confirm(\'Delete '+escJs(p.name)+'?\'))deleteProject(\''+p.id+'\')" style="background:none;border:none;cursor:pointer;font-size:16px;color:#C4C8D0;" title="Delete">&#x00D7;</button>');
+    h.push('<span style="color:#C4C8D0;font-size:12px;">'+(isOpen?"▲":"▼")+'</span>');
+    h.push('</div></div>');
+
+    // Body
+    if(isOpen){
+      h.push('<div class="pipeline-body">');
+      p.stages.forEach(function(s,si){
+        var isOverdue=s.deadline&&todayISO()>s.deadline&&s.status!=="completed";
+        h.push('<div class="stage-row'+(isOverdue?" overdue":"")+'" draggable="true" id="stage-'+p.id+'-'+si+'" ondragstart="onStageDragStart(event,\''+p.id+'\','+si+')" ondragover="onStageDragOver(event,\''+p.id+'\','+si+')" ondrop="onStageDrop(event,\''+p.id+'\','+si+')" ondragleave="onStageDragLeave(event)">');
+        h.push('<span class="drag-handle">&#x2630;</span>');
+        h.push('<div class="stage-num" style="background:'+wfc.c+';">'+(si+1)+'</div>');
+        h.push('<div class="stage-name">'+s.stage+'</div>');
+        // Date with change indicator
+        if(s.deadline){
+          var dateHtml='<span class="stage-date'+(s.originalDeadline&&s.originalDeadline!==s.deadline?" changed":"")+'">'+fromISO(s.deadline)+'</span>';
+          if(s.originalDeadline&&s.originalDeadline!==s.deadline){
+            dateHtml+='<span class="date-change-badge">was '+fromISO(s.originalDeadline)+'</span>';
+          }
+          h.push(dateHtml);
+        }
+        if(isOverdue)h.push('<span class="overdue-flag">&#9888; Overdue</span>');
+        h.push(statusBadge(s.status));
+        if(s.note)h.push('<span style="font-size:10px;color:#8A94A6;background:#F5F6FA;border-radius:4px;padding:1px 6px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;" title="'+s.note+'">&#x1F4CB; '+s.note+'</span>');
+        h.push('<button onclick="openStageDateEdit(\''+p.id+'\','+si+')" style="background:none;border:none;cursor:pointer;font-size:11px;color:#8A94A6;padding:2px 4px;">Edit</button>');
+        h.push('</div>');
+      });
+      h.push('</div>');
+    }
+    h.push('</div>');
+  });
+
+  document.getElementById("tab-pipeline").innerHTML=h.join('');
+}
+
+function toggleProject(id){
+  var p=state.projects.find(function(x){return x.id===id;});
+  if(p){p.open=p.open===false?true:false;renderPipeline();}
+}
+
+// Stage drag-drop reorder
+function onStageDragStart(e,projId,idx){state.stageDragCtx={projectId:projId,dragIdx:idx};e.dataTransfer.effectAllowed="move";}
+function onStageDragOver(e,projId,idx){e.preventDefault();var el=document.getElementById("stage-"+projId+"-"+idx);if(el)el.classList.add("drag-over");}
+function onStageDragLeave(e){if(e.target.closest&&e.target.closest(".stage-row"))e.target.closest(".stage-row").classList.remove("drag-over");}
+function onStageDrop(e,projId,idx){
+  e.preventDefault();
+  var ctx=state.stageDragCtx;if(!ctx||ctx.projectId!==projId||ctx.dragIdx===idx)return;
+  var p=state.projects.find(function(x){return x.id===projId;});if(!p)return;
+  var stages=p.stages.slice();var moved=stages.splice(ctx.dragIdx,1)[0];stages.splice(idx,0,moved);
+  p.stages=stages;persistProject(p);renderPipeline();
+}
+
+// Stage date edit
+function openStageDateEdit(projId,si){
+  var p=state.projects.find(function(x){return x.id===projId;});if(!p)return;
+  var s=p.stages[si];
+  state.stageDateCtx={projectId:projId,stageIdx:si,status:s.status||null};
+  document.getElementById("stage-date-info").textContent=s.stage;
+  document.getElementById("stage-date-input").value=s.deadline||"";
+  document.getElementById("stage-note").value=s.note||"";
+  var oldTxt=s.originalDeadline&&s.originalDeadline!==s.deadline?"Original date: "+fromISO(s.originalDeadline):"";
+  document.getElementById("stage-date-old").textContent=oldTxt;
+  ["started","ongoing","completed"].forEach(function(st){document.getElementById("sdbtn-"+st).className="status-btn"+(s.status===st?" sel-"+st:"");});
+  document.getElementById("modal-stage-date").classList.remove("hidden");
+}
+function setStageDateStatus(s){
+  state.stageDateCtx.status=s;
+  ["started","ongoing","completed"].forEach(function(st){document.getElementById("sdbtn-"+st).className="status-btn"+(st===s?" sel-"+st:"");});
+}
+async function saveStageDateEdit(){
+  var ctx=state.stageDateCtx;if(!ctx)return;
+  var p=state.projects.find(function(x){return x.id===ctx.projectId;});if(!p)return;
+  var s=p.stages[ctx.stageIdx];
+  var newDate=document.getElementById("stage-date-input").value;
+  if(newDate&&newDate!==s.deadline){
+    // Calculate shift in days
+    var shift=daysBetween(s.deadline||newDate,newDate);
+    if(!s.originalDeadline)s.originalDeadline=s.deadline;
+    s.deadline=newDate;
+    // Shift all subsequent stages by the same amount
+    for(var i=ctx.stageIdx+1;i<p.stages.length;i++){
+      var ns=p.stages[i];
+      if(ns.deadline){
+        if(!ns.originalDeadline)ns.originalDeadline=ns.deadline;
+        ns.deadline=addDays(ns.deadline,shift);
+      }
+    }
+    // Also shift project end date if last stage or beyond
+    if(p.endDate){
+      var newEnd=addDays(p.endDate,shift);
+      if(newEnd>p.endDate||(ctx.stageIdx===p.stages.length-1)){
+        p.endDate=newEnd;
+      }
+    }
+  }
+  s.status=ctx.status;
+  s.note=document.getElementById("stage-note").value.trim();
+  await persistProject(p);
+  closeModal("modal-stage-date");renderPipeline();
+}
+
+// ── NEW / EDIT PROJECT MODAL ───────────────────────────────────────────────────
+var WF_PRESETS={
+  "Brand Comm Strategy":["Brand brief doc","Brand brief call with client","3C","Community connect","Strategy deck completion","Incorporating feedback and final deck","Strategy presentation meeting","Mailing to client","Handover to content strategy team"],
+  "Content Strategy":["Receive handover","Plotting ideas on excel","Always-on paid ads","Hygiene content ideas","Hub campaigns","Hero campaigns","Roll-out plan","Incorporating feedback, adding videos and final deck","Content strategy presentation","Mailing to client"],
+  "Brand Identity":["Brief & landscape","Direction sharpening","Logo, insignia & colour","Feedback & finalisation","Packaging options","Content finalisation","Social media identity","Brand book & handover"],
+  "Other":[]
+};
+
+function openNewProject(){
+  state.editingProjectId=null;state.tempStages=[];
+  document.getElementById("np-name").value="";document.getElementById("np-wf").value="";document.getElementById("np-lead").value="";
+  document.getElementById("np-start").value=todayISO();document.getElementById("np-end").value="";
+  document.getElementById("np-err").style.display="none";
+  document.getElementById("modal-proj-title").textContent="New Project";
+  renderStageList();renderStagePresets();
+  document.getElementById("modal-project").classList.remove("hidden");
+}
+function openEditProject(id){
+  var p=state.projects.find(function(x){return x.id===id;});if(!p)return;
+  state.editingProjectId=id;state.tempStages=p.stages.map(function(s){return Object.assign({},s);});
+  document.getElementById("np-name").value=p.name;document.getElementById("np-wf").value=p.wf;document.getElementById("np-lead").value=p.lead||"";
+  document.getElementById("np-start").value=p.startDate||"";document.getElementById("np-end").value=p.endDate||"";
+  document.getElementById("np-err").style.display="none";
+  document.getElementById("modal-proj-title").textContent="Edit Project";
+  renderStageList();renderStagePresets();
+  document.getElementById("modal-project").classList.remove("hidden");
+}
+document.getElementById("np-wf").addEventListener("change",function(){renderStagePresets();});
+
+function renderStagePresets(){
+  var wf=document.getElementById("np-wf").value;
+  var presets=WF_PRESETS[wf]||[];
+  var el=document.getElementById("np-stage-presets");
+  if(!presets.length){el.innerHTML='';return;}
+  el.innerHTML='<div style="font-size:11px;color:#8A94A6;margin-bottom:4px;width:100%;">Quick add:</div>'+
+    presets.map(function(s){
+      return'<button onclick="addPresetStage(\''+escJs(s)+'\')" style="background:#F5F6FA;border:0.5px solid #E2E5EF;border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;color:#5F5E5A;">+'+s+'</button>';
+    }).join("");
+}
+function addPresetStage(s){if(!state.tempStages.find(function(x){return x.stage===s;})){state.tempStages.push({stage:s,deadline:"",status:null});renderStageList();}}
+function addStageToList(){
+  var v=document.getElementById("np-stage-input").value.trim();if(!v)return;
+  state.tempStages.push({stage:v,deadline:"",status:null});
+  document.getElementById("np-stage-input").value="";renderStageList();
+}
+function removeStage(i){state.tempStages.splice(i,1);renderStageList();}
+function renderStageList(){
+  var startD=document.getElementById("np-start").value;var endD=document.getElementById("np-end").value;
+  var total=startD&&endD?daysBetween(startD,endD):0;
+  var per=state.tempStages.length&&total?Math.max(1,Math.floor(total/state.tempStages.length)):0;
+  var h=state.tempStages.map(function(s,i){
+    if(per&&startD&&!s.deadline)s.deadline=addDays(startD,per*(i+1));
+    if(per&&startD&&i===state.tempStages.length-1&&endD)s.deadline=endD;
+    return'<div style="display:flex;align-items:center;gap:6px;padding:6px 8px;background:'+(i%2===0?"#F9FAFB":"#fff")+';border-radius:7px;margin-bottom:4px;">'+
+      '<span style="color:#C0C4CC;font-size:12px;">&#x2630;</span>'+
+      '<span style="flex:1;font-size:12px;">'+s.stage+'</span>'+
+      '<input type="date" value="'+(s.deadline||"")+'" onchange="state.tempStages['+i+'].deadline=this.value" style="width:130px;height:28px;border-radius:6px;border:0.5px solid #E2E5EF;padding:0 8px;font-size:11px;background:#fff;outline:none;color:#1A1A2E;font-family:inherit;">'+
+      '<button onclick="removeStage('+i+')" style="background:none;border:none;cursor:pointer;color:#C4C8D0;font-size:16px;">&#x00D7;</button>'+
+    '</div>';
+  }).join("");
+  document.getElementById("np-stages-list").innerHTML=h||'<div style="color:#B4B2A9;font-size:12px;font-style:italic;padding:8px;">No stages added yet</div>';
+}
+document.getElementById("np-start").addEventListener("change",renderStageList);
+document.getElementById("np-end").addEventListener("change",renderStageList);
+
+async function saveNewProject(){
+  var name=document.getElementById("np-name").value.trim();
+  var wf=document.getElementById("np-wf").value;
+  var lead=document.getElementById("np-lead").value;
+  var startDate=document.getElementById("np-start").value;
+  var endDate=document.getElementById("np-end").value;
+  var errEl=document.getElementById("np-err");
+  if(!name||!wf||!startDate||!endDate){errEl.textContent="Name, workflow, start and end date are required.";errEl.style.display="block";return;}
+  if(endDate<=startDate){errEl.textContent="End date must be after start date.";errEl.style.display="block";return;}
+  errEl.style.display="none";
+  if(state.editingProjectId){
+    var p=state.projects.find(function(x){return x.id===state.editingProjectId;});
+    if(p){Object.assign(p,{name:name,wf:wf,lead:lead,startDate:startDate,endDate:endDate,stages:state.tempStages});}
+    await persistProject(p);
+  } else {
+    var proj={id:"p"+Date.now(),name:name,wf:wf,lead:lead,startDate:startDate,endDate:endDate,stages:state.tempStages,open:true};
+    state.projects.push(proj);
+    await persistProject(proj);
+  }
+  closeModal("modal-project");renderPipeline();
+}
+
+// ── CALENDAR ───────────────────────────────────────────────────────────────────
+function renderCalendar(){
+  var weekStart=getMondayISO(state.calOffset);
+  var days=[];for(var i=0;i<7;i++)days.push(addDays(weekStart,i));
+  var dayNames=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+
+  var fp=state.filterPerson;var ft=state.filterType;
+  var eventsForWeek=state.events.filter(function(ev){
+    if(ev.date<weekStart||ev.date>days[6])return false;
+    if(fp!=="All"&&ev.person!==fp)return false;
+    if(ft!=="All"&&ev.type!==ft)return false;
+    return true;
+  });
+
+  var h=[];
+  h.push('<div class="filter-row">');
+  h.push('<div class="week-nav"><button class="week-nav-btn" onclick="state.calOffset--;renderCalendar()">&#x2039;</button><span style="font-size:13px;font-weight:600;color:#1B2A4A;">'+weekLabel(state.calOffset)+'</span><button class="week-nav-btn" onclick="state.calOffset++;renderCalendar()">&#x203A;</button></div>');
+  h.push('<div class="view-toggle"><button class="view-btn'+(state.calView==="person"?" active":"")+'" onclick="state.calView=\'person\';renderCalendar()">By person</button><button class="view-btn'+(state.calView==="type"?" active":"")+'" onclick="state.calView=\'type\';renderCalendar()">By type</button></div>');
+  h.push('<select class="filter-sel" onchange="state.filterPerson=this.value;renderCalendar()"><option value="All">All people</option>'+PEOPLE.map(function(p){return'<option'+(fp===p?' selected':'')+'>'+p+'</option>';}).join("")+'</select>');
+  h.push('<select class="filter-sel" onchange="state.filterType=this.value;renderCalendar()"><option value="All">All types</option>');
+  Object.keys(EVENT_TYPES).forEach(function(k){h.push('<option value="'+k+'"'+(ft===k?' selected':'')+'>'+EVENT_TYPES[k].label+'</option>');});
+  h.push('</select></div>');
+
+  h.push('<div class="cal-wrap"><table class="cal-table"><thead><tr><th>'+(state.calView==="person"?"Person":"Type")+'</th>');
+  days.forEach(function(d,i){var today=d===todayISO();h.push('<th style="'+(today?"color:#C0DD97;":"")+'">'+(today?'<span style="background:#C0DD97;color:#1B2A4A;border-radius:10px;padding:1px 6px;">'+dayNames[i]+' '+parseInt(d.slice(8))+'</span>':dayNames[i]+' '+parseInt(d.slice(8)))+'</th>');});
+  h.push('</tr></thead><tbody>');
+
+  var rows=state.calView==="person"?PEOPLE:Object.keys(EVENT_TYPES);
+  rows.forEach(function(rowKey){
+    if(fp!=="All"&&state.calView==="person"&&rowKey!==fp)return;
+    if(ft!=="All"&&state.calView==="type"&&rowKey!==ft)return;
+    var et=state.calView==="type"?(EVENT_TYPES[rowKey]||{label:rowKey,color:"#888"}):null;
+    h.push('<tr>');
+    h.push('<td style="min-width:90px;">'+(state.calView==="person"?'<div style="display:flex;align-items:center;gap:6px;">'+av(rowKey,22)+'<span style="font-size:12px;font-weight:600;">'+rowKey+'</span></div>':'<div style="display:flex;align-items:center;gap:5px;"><div style="width:8px;height:8px;border-radius:50%;background:'+(et?et.color:"#888")+';flex-shrink:0;"></div><span style="font-size:11px;font-weight:600;">'+((et&&et.label)||rowKey)+'</span></div>')+'</td>');
+    days.forEach(function(d){
+      var cellEvs=eventsForWeek.filter(function(ev){
+        if(ev.date!==d)return false;
+        if(state.calView==="person")return ev.person===rowKey;
+        return ev.type===rowKey;
+      });
+      h.push('<td>');
+      cellEvs.forEach(function(ev){
+        var evt=EVENT_TYPES[ev.type]||{label:ev.type,color:"#888",bg:"#F5F5F5",cls:"major"};
+        var isClient=ev.type==="brief-call"||ev.type==="presentation";
+        h.push('<div class="cal-event '+evt.cls+'" onclick="showEventDetail(\''+ev.id+'\')" draggable="true" ondragstart="onEvDragStart(event,\''+ev.id+'\')" title="'+ev.brand+' — '+evt.label+'">');
+        h.push('<div class="cal-event-brand" style="color:'+evt.color+'">'+ev.brand+'</div>');
+        h.push('<div class="cal-event-type">'+evt.label+(ev.time?' · '+ev.time:'')+'</div>');
+        h.push('<a class="gcal-btn" href="'+gcalLink(ev)+'" target="_blank" onclick="event.stopPropagation()">GCal</a>');
+        h.push('</div>');
+      });
+      h.push('<button class="add-event-btn" onclick="openNewEventFor(\''+d+'\','+(state.calView==="person"?'\''+escJs(rowKey)+'\'':'\'\'')+')">+</button>');
+      h.push('</td>');
+    });
+    h.push('</tr>');
+  });
+  h.push('</tbody></table></div>');
+
+  // Drag-drop for calendar cells
+  h.push('<script>');
+  h.push('document.querySelectorAll(".cal-table td:not(:first-child)").forEach(function(td,i){');
+  h.push('td.addEventListener("dragover",function(e){e.preventDefault();td.style.background="#F0F9F8";});');
+  h.push('td.addEventListener("dragleave",function(){td.style.background="";});');
+  h.push('td.addEventListener("drop",function(e){e.preventDefault();td.style.background="";var evId=e.dataTransfer.getData("evId");if(!evId)return;var newDate=td.dataset.date;var ev=state.events.find(function(x){return x.id===evId;});if(ev&&newDate){ev.date=newDate;persistEvent(ev);renderCalendar();}});');
+  h.push('});');
+  h.push('<\/script>');
+
+  document.getElementById("tab-calendar").innerHTML=h.join('');
+
+  // Set data-date on cells after render
+  var cells=document.querySelectorAll(".cal-table tbody tr td:not(:first-child)");
+  var colCount=days.length;
+  cells.forEach(function(td,idx){td.dataset.date=days[idx%colCount];});
+}
+
+var evDragId=null;
+function onEvDragStart(e,id){evDragId=id;e.dataTransfer.setData("evId",id);e.dataTransfer.effectAllowed="move";}
+
+function showEventDetail(id){
+  var ev=state.events.find(function(x){return x.id===id;});if(!ev)return;
+  var et=EVENT_TYPES[ev.type]||{label:ev.type,color:"#888",bg:"#F5F5F5"};
+  state.editingEventId=id;
+  var h=[];
+  h.push('<div style="background:'+et.bg+';border-left:3px solid '+et.color+';border-radius:8px;padding:12px;margin-bottom:12px;">');
+  h.push('<div style="font-size:14px;font-weight:700;color:'+et.color+';">'+ev.brand+'</div>');
+  h.push('<div style="font-size:12px;color:#5F5E5A;margin-top:3px;">'+et.label+'</div>');
+  h.push('</div>');
+  h.push('<div style="display:grid;gap:8px;font-size:13px;">');
+  h.push('<div><span style="color:#8A94A6;font-size:11px;">Person</span><br>'+av(ev.person,22)+'&nbsp;'+ev.person+'</div>');
+  h.push('<div><span style="color:#8A94A6;font-size:11px;">Date</span><br>'+fromISO(ev.date)+(ev.time?' at '+ev.time:'')+'</div>');
+  if(ev.notes)h.push('<div><span style="color:#8A94A6;font-size:11px;">Notes</span><br>'+ev.notes+'</div>');
+  h.push('<a class="gcal-btn" href="'+gcalLink(ev)+'" target="_blank" style="width:fit-content;">&#x1F4C6; Add to Google Calendar</a>');
+  h.push('</div>');
+  document.getElementById("event-detail-content").innerHTML=h.join('');
+  document.getElementById("modal-event-detail").classList.remove("hidden");
+}
+function editEventFromDetail(){
+  var ev=state.events.find(function(x){return x.id===state.editingEventId;});
+  if(!ev)return;
+  closeModal("modal-event-detail");
+  populateEventModal(ev);
+  document.getElementById("modal-event").classList.remove("hidden");
+}
+async function deleteEventFromDetail(){
+  if(!confirm("Delete this event?"))return;
+  await deleteEvent(state.editingEventId);
+  closeModal("modal-event-detail");
+}
+
+// ── EVENT MODAL ────────────────────────────────────────────────────────────────
+function openNewEvent(){openNewEventFor("","");}
+function openNewEventFor(date,person){
+  state.editingEventId=null;
+  populateEventModal({brand:"",person:person||"",type:"",date:date||todayISO(),time:"",notes:""});
+  document.getElementById("modal-event-title").textContent="Add to Calendar";
+  document.getElementById("modal-event").classList.remove("hidden");
+}
+function populateEventModal(ev){
+  var brandSel=document.getElementById("ev-brand");
+  brandSel.innerHTML='<option value="">Select project...</option>'+state.projects.map(function(p){return'<option'+(p.name===ev.brand?' selected':'')+'>'+p.name+'</option>';}).join("");
+  document.getElementById("ev-person").value=ev.person||"";
+  document.getElementById("ev-type").value=ev.type||"";
+  document.getElementById("ev-date").value=ev.date||todayISO();
+  document.getElementById("ev-time").value=ev.time||"";
+  document.getElementById("ev-notes").value=ev.notes||"";
+  onEvTypeChange();
+}
+function onEvTypeChange(){
+  var t=document.getElementById("ev-type").value;
+  var showTime=t==="brief-call"||t==="presentation";
+  document.getElementById("ev-time-field").style.display=showTime?"block":"none";
+}
+document.getElementById("ev-type").addEventListener("change",onEvTypeChange);
+async function saveEvent(){
+  var brand=document.getElementById("ev-brand").value;
+  var person=document.getElementById("ev-person").value;
+  var type=document.getElementById("ev-type").value;
+  var date=document.getElementById("ev-date").value;
+  var time=document.getElementById("ev-time").value;
+  var notes=document.getElementById("ev-notes").value;
+  var errEl=document.getElementById("ev-err");
+  if(!brand||!person||!type||!date){errEl.textContent="Brand, person, type and date are required.";errEl.style.display="block";return;}
+  errEl.style.display="none";
+  var ev={id:state.editingEventId||"e"+Date.now(),brand:brand,person:person,type:type,date:date,time:time||null,notes:notes};
+  if(state.editingEventId){state.events=state.events.map(function(x){return x.id===ev.id?ev:x;});}
+  else state.events.push(ev);
+  await persistEvent(ev);
+  closeModal("modal-event");renderCalendar();
+}
+
+// ── PEOPLE ─────────────────────────────────────────────────────────────────────
+function renderPeople(){
+  var h=[];
+  h.push('<div class="people-grid">');
+  PEOPLE.forEach(function(p){
+    var pProjs=state.projects.filter(function(pr){return pr.lead===p;});
+    var pEvents=state.events.filter(function(ev){return ev.person===p;});
+    var clientEvs=pEvents.filter(function(ev){return ev.type==="brief-call"||ev.type==="presentation";});
+    var ongoingProjs=pProjs.filter(function(pr){var s=calcProjStatus(pr);return s.label!=="Done";});
+    var i=PEOPLE.indexOf(p);
+    var ini=p[0].toUpperCase();
+    h.push('<div class="person-card">');
+    h.push('<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">');
+    h.push('<div class="avatar" style="width:38px;height:38px;font-size:14px;background:'+AV_COLORS[i]+';color:'+AV_FGS[i]+';">'+ini+'</div>');
+    h.push('<div><div style="font-size:14px;font-weight:600;color:#1B2A4A;">'+p+'</div><div style="font-size:11px;color:#8A94A6;">'+ongoingProjs.length+' active project'+(ongoingProjs.length!==1?'s':'')+'</div></div>');
+    var bwLabel=ongoingProjs.length===0?"Available":ongoingProjs.length<=2?"Healthy":ongoingProjs.length===3?"At Capacity":"Overloaded";
+    var bwBg=ongoingProjs.length===0?"#E6F1FB":ongoingProjs.length<=2?"#EAF3DE":ongoingProjs.length===3?"#FFF3CD":"#FCEBEB";
+    var bwFg=ongoingProjs.length===0?"#185FA5":ongoingProjs.length<=2?"#3B6D11":ongoingProjs.length===3?"#856404":"#A32D2D";
+    h.push('<span class="badge" style="background:'+bwBg+';color:'+bwFg+';margin-left:auto;">'+bwLabel+'</span>');
+    h.push('</div>');
+    h.push('<div class="mini-stats">');
+    h.push('<div class="mini-stat" style="background:#EBF0FA;"><div style="font-size:10px;color:#4A6FA5;font-weight:500;">Projects</div><div style="font-size:18px;font-weight:700;color:#4A6FA5;">'+pProjs.length+'</div></div>');
+    h.push('<div class="mini-stat" style="background:#FAEEDA;"><div style="font-size:10px;color:#854F0B;font-weight:500;">Events</div><div style="font-size:18px;font-weight:700;color:#854F0B;">'+pEvents.length+'</div></div>');
+    h.push('<div class="mini-stat" style="background:#FDECEA;"><div style="font-size:10px;color:#E53935;font-weight:500;">Client mtgs</div><div style="font-size:18px;font-weight:700;color:#E53935;">'+clientEvs.length+'</div></div>');
+    h.push('</div>');
+    if(pProjs.length){
+      h.push('<div style="margin-top:12px;"><div style="font-size:10px;font-weight:600;color:#8A94A6;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;">Active projects</div>');
+      pProjs.slice(0,4).forEach(function(pr){
+        var ps=calcProjStatus(pr);var wfc=WF_COLORS[pr.wf]||WF_COLORS["Other"];
+        h.push('<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;"><div style="width:6px;height:6px;border-radius:50%;background:'+wfc.c+';flex-shrink:0;"></div><span style="font-size:12px;flex:1;">'+pr.name+'</span><span class="badge" style="background:'+ps.bg+';color:'+ps.fg+';font-size:10px;">'+ps.label+'</span></div>');
+      });
+      h.push('</div>');
+    }
+    h.push('</div>');
+  });
+  h.push('</div>');
+  // AI
+  h.push('<div class="card">');
+  h.push('<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;"><div><div style="font-size:13px;font-weight:600;color:#1B2A4A;margin-bottom:2px;">AI Pipeline Analysis</div><div style="font-size:11px;color:#8A94A6;">Project health, bandwidth, recommendations</div></div><button class="btn btn-navy" onclick="runAnalysis()">Analyse</button></div>');
+  if(state.analysisText)h.push('<div class="analysis-box">'+state.analysisText+'</div>');
+  else h.push('<div style="font-size:12px;color:#B4B2A9;font-style:italic;text-align:center;padding:16px 0;">Click "Analyse" to generate an AI summary</div>');
+  h.push('</div>');
+  document.getElementById("tab-people").innerHTML=h.join('');
+}
+state.analysisText="";
+async function runAnalysis(){
+  state.analysisText="Analysing...";renderPeople();
+  var summary=PEOPLE.map(function(p){
+    var pProjs=state.projects.filter(function(pr){return pr.lead===p;});
+    var active=pProjs.filter(function(pr){var s=calcProjStatus(pr);return s.label!=="Done";});
+    return p+": "+pProjs.length+" projects total, "+active.length+" active ("+active.map(function(pr){return pr.name+" ["+calcProjStatus(pr).label+"]";}).join(", ")+")";
+  }).join("\n");
+  var projSummary=state.projects.map(function(p){var s=calcProjStatus(p);var done=p.stages.filter(function(st){return st.status==="completed";}).length;return p.name+" ["+p.wf+"]: "+s.label+", "+done+"/"+p.stages.length+" stages done";}).join("\n");
+  try{
+    var r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:800,messages:[{role:"user",content:"You are a project pipeline analyst for a strategy agency. Give a brief 3-paragraph analysis: (1) workload balance across Tanya, Shipra, Binita, (2) project health — which are at risk and why, (3) recommendations.\n\nTeam:\n"+summary+"\n\nProjects:\n"+projSummary}]})});
+    var d=await r.json();state.analysisText=(d.content&&d.content[0]&&d.content[0].text)||"No analysis.";
+  }catch(e){state.analysisText="Could not load analysis.";}
+  renderPeople();
+}
+
+// ── SETTINGS ───────────────────────────────────────────────────────────────────
+function renderSettings(){
+  var h=[];
+  h.push('<div class="card"><div style="font-size:13px;font-weight:600;color:#1B2A4A;margin-bottom:12px;">Projects</div>');
+  h.push('<div style="font-size:12px;color:#8A94A6;margin-bottom:12px;">Manage all projects. Delete removes from pipeline.</div>');
+  if(state.projects.length){
+    state.projects.forEach(function(p){
+      var wfc=WF_COLORS[p.wf]||WF_COLORS["Other"];var ps=calcProjStatus(p);
+      h.push('<div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:8px;border:0.5px solid #E2E5EF;margin-bottom:6px;background:#F9FAFB;">');
+      h.push('<div style="width:8px;height:8px;border-radius:50%;background:'+wfc.c+'"></div>');
+      h.push('<div style="flex:1;"><div style="font-size:12px;font-weight:600;">'+p.name+'</div><div style="font-size:11px;color:#8A94A6;">'+p.wf+(p.lead?' · '+p.lead:'')+'</div></div>');
+      h.push('<span class="badge" style="background:'+ps.bg+';color:'+ps.fg+';">'+ps.label+'</span>');
+      h.push('<button class="btn-ghost" onclick="openEditProject(\''+escJs(p.id)+'\')" style="height:28px;padding:0 10px;font-size:11px;">Edit</button>');
+      h.push('<button class="btn-danger" onclick="if(confirm(\'Delete '+escJs(p.name)+'?\'))deleteProject(\''+escJs(p.id)+'\')">Delete</button>');
+      h.push('</div>');
+    });
+  } else h.push('<div style="color:#8A94A6;font-size:13px;font-style:italic;">No projects yet</div>');
+  h.push('</div>');
+  h.push('<div class="card"><div style="font-size:13px;font-weight:600;color:#1B2A4A;margin-bottom:8px;">Team</div>');
+  h.push('<div style="display:flex;gap:10px;">');
+  PEOPLE.forEach(function(p,i){h.push('<div style="display:flex;align-items:center;gap:6px;padding:8px 12px;background:#F9FAFB;border-radius:8px;border:0.5px solid #E2E5EF;">'+av(p,28)+'<span style="font-size:13px;font-weight:500;">'+p+'</span></div>');});
+  h.push('</div></div>');
+  document.getElementById("tab-settings").innerHTML=h.join('');
+}
+
+function closeModal(id){document.getElementById(id).classList.add("hidden");}
+document.querySelectorAll(".modal-overlay").forEach(function(el){el.addEventListener("click",function(e){if(e.target===el)el.classList.add("hidden");});});
+
+loadAll();
+</script>
+</body>
+</html><!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Strategy Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',system-ui,sans-serif;background:#F4F5F9;color:#1A1A2E;font-size:14px;}
+button,select,input,textarea{font-family:inherit;}
+.topbar{background:#1B2A4A;height:50px;display:flex;align-items:center;padding:0 20px;gap:10px;position:sticky;top:0;z-index:200;}
+.topbar h1{font-size:15px;font-weight:600;color:#fff;}
+.topbar-sub{font-size:11px;color:rgba(255,255,255,0.4);}
+.sync-badge{font-size:11px;padding:2px 8px;border-radius:10px;margin-left:4px;}
+.sync-ok{background:#EAF3DE;color:#3B6D11;}
+.sync-err{background:#FCEBEB;color:#A32D2D;}
+.sync-loading{background:#FFF3CD;color:#856404;}
+.topbar-right{margin-left:auto;display:flex;gap:8px;}
+.btn{height:32px;padding:0 14px;border-radius:8px;border:none;font-size:12px;font-weight:600;cursor:pointer;}
+.btn-navy{background:#2E4A7A;color:#fff;}
+.btn-green{background:#C0DD97;color:#27500A;}
+.btn-primary{background:#1B2A4A;color:#fff;height:40px;padding:0 20px;font-size:13px;border:none;border-radius:8px;cursor:pointer;font-weight:600;}
+.btn-primary:disabled{background:#D3D1C7;cursor:not-allowed;}
+.btn-ghost{background:#F5F6FA;color:#8A94A6;border:0.5px solid #E2E5EF;height:32px;padding:0 12px;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;}
+.btn-danger{background:#FCEBEB;color:#A32D2D;border:0.5px solid #F7C1C1;height:30px;padding:0 10px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;}
+.tabs{background:#fff;border-bottom:1px solid #E2E5EF;display:flex;padding:0 20px;gap:4px;}
+.tab{padding:11px 14px;font-size:13px;font-weight:500;cursor:pointer;border:none;background:none;border-bottom:2px solid transparent;color:#8A94A6;white-space:nowrap;}
+.tab.active{color:#0B6E6E;border-bottom-color:#0B6E6E;}
+.page{max-width:960px;margin:0 auto;padding:20px 16px;}
+.card{background:#fff;border-radius:12px;border:0.5px solid #E2E5EF;padding:20px;margin-bottom:12px;}
+.card-sm{background:#fff;border-radius:10px;border:0.5px solid #E2E5EF;padding:14px 16px;margin-bottom:8px;}
+.field{margin-bottom:12px;}
+.field label{display:block;font-size:11px;font-weight:600;color:#8A94A6;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:5px;}
+.input{width:100%;height:38px;border-radius:8px;border:1px solid #E2E5EF;padding:0 12px;font-size:13px;background:#F5F6FA;color:#1A1A2E;outline:none;}
+.input:focus{border-color:#0B6E6E;background:#fff;}
+select.input{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238A94A6' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;background-color:#F5F6FA;}
+input[type=date],input[type=time]{height:38px;border-radius:8px;border:1px solid #E2E5EF;padding:0 12px;font-size:13px;background:#F5F6FA;color:#1A1A2E;outline:none;width:100%;font-family:inherit;}
+textarea.input{height:64px;padding:10px 12px;resize:vertical;}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px;}
+.modal{background:#fff;border-radius:14px;padding:22px;width:100%;max-width:520px;max-height:92vh;overflow-y:auto;}
+.modal-title{font-size:15px;font-weight:600;color:#1B2A4A;margin-bottom:18px;display:flex;justify-content:space-between;align-items:center;}
+.modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:#8A94A6;line-height:1;}
+.hidden{display:none;}
+.badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;white-space:nowrap;}
+.tag{display:inline-block;padding:2px 7px;border-radius:8px;font-size:11px;font-weight:500;}
+.avatar{display:flex;align-items:center;justify-content:center;border-radius:50%;font-weight:600;flex-shrink:0;}
+.empty{text-align:center;padding:36px;color:#8A94A6;font-size:13px;}
+/* Pipeline */
+.pipeline-card{background:#fff;border-radius:12px;border:0.5px solid #E2E5EF;margin-bottom:10px;overflow:hidden;}
+.pipeline-header{display:flex;align-items:center;gap:10px;padding:14px 16px;cursor:pointer;user-select:none;}
+.pipeline-header:hover{background:#FAFBFD;}
+.pipeline-body{border-top:0.5px solid #E2E5EF;padding:12px 16px;}
+.stage-row{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;border:0.5px solid #EEF0F5;margin-bottom:5px;background:#fff;cursor:grab;}
+.stage-row:active{cursor:grabbing;opacity:0.8;}
+.stage-row.dragging{opacity:0.4;border:1.5px dashed #0B6E6E;}
+.stage-row.drag-over{border-color:#0B6E6E;background:#F0F9F8;}
+.stage-num{width:22px;height:22px;border-radius:50%;color:#fff;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;flex-shrink:0;}
+.stage-name{flex:1;font-size:12px;color:#1A1A2E;}
+.stage-date{font-size:11px;color:#8A94A6;}
+.stage-date.changed{color:#C07C2B;font-weight:500;}
+.date-change-badge{font-size:10px;background:#FBF2E6;color:#C07C2B;border-radius:4px;padding:1px 5px;margin-left:4px;}
+.stage-status{display:inline-flex;align-items:center;gap:4px;}
+.overdue-flag{color:#A32D2D;font-size:10px;font-weight:600;}
+/* Calendar */
+.cal-wrap{overflow-x:auto;}
+.cal-table{border-collapse:collapse;min-width:700px;width:100%;}
+.cal-table th{background:#1B2A4A;color:#fff;padding:9px 12px;font-size:11px;font-weight:600;text-align:center;}
+.cal-table th:first-child{text-align:left;min-width:90px;}
+.cal-table td{border:0.5px solid #E2E5EF;padding:6px;vertical-align:top;min-height:70px;background:#fff;}
+.cal-table td:first-child{background:#F9FAFB;font-size:12px;font-weight:600;color:#1B2A4A;padding:8px 10px;vertical-align:middle;}
+.cal-event{border-radius:7px;padding:5px 8px;margin-bottom:4px;font-size:11px;cursor:pointer;border-left:3px solid;}
+.cal-event:hover{opacity:0.85;}
+.cal-event-brand{font-weight:700;font-size:11px;}
+.cal-event-type{font-size:10px;opacity:0.8;}
+.cal-event.client-facing{background:#FDECEA;border-left-color:#E53935;}
+.cal-event.follow-up{background:#FBF2E6;border-left-color:#C07C2B;}
+.cal-event.submission{background:#E8F5EF;border-left-color:#2E7D5E;}
+.cal-event.major{background:#EBF0FA;border-left-color:#4A6FA5;}
+.add-event-btn{width:100%;background:none;border:1px dashed #D0D5E0;border-radius:6px;padding:4px;font-size:10px;color:#B4B2A9;cursor:pointer;text-align:center;}
+.add-event-btn:hover{border-color:#0B6E6E;color:#0B6E6E;}
+.week-nav{display:flex;align-items:center;gap:10px;}
+.week-nav-btn{background:#fff;border:0.5px solid #E2E5EF;border-radius:6px;width:28px;height:28px;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;}
+.view-toggle{display:flex;background:#F4F5F9;border-radius:8px;padding:2px;gap:2px;}
+.view-btn{padding:4px 10px;border-radius:6px;border:none;font-size:12px;font-weight:500;cursor:pointer;background:none;color:#8A94A6;}
+.view-btn.active{background:#fff;color:#1B2A4A;font-weight:600;}
+.filter-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px;}
+.filter-sel{height:30px;border-radius:6px;border:0.5px solid #E2E5EF;padding:0 8px;font-size:12px;background:#F5F6FA;outline:none;color:#1A1A2E;font-family:inherit;}
+.gcal-btn{background:#4285F4;color:#fff;border:none;border-radius:5px;padding:2px 7px;font-size:10px;cursor:pointer;font-weight:600;text-decoration:none;display:inline-block;}
+/* People */
+.people-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px;}
+.person-card{background:#fff;border-radius:12px;border:0.5px solid #E2E5EF;padding:16px;}
+.mini-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:10px;}
+.mini-stat{border-radius:7px;padding:7px 8px;text-align:center;}
+.analysis-box{font-size:13px;line-height:1.7;background:#F9FAFB;border-radius:8px;padding:14px 16px;white-space:pre-wrap;}
+/* Status pills */
+.s-started{background:#E8F1FB;color:#1565A0;}
+.s-ongoing{background:#FBF2E6;color:#C07C2B;}
+.s-completed{background:#C0DD97;color:#27500A;}
+.s-null{background:#F1EFE8;color:#8A94A6;}
+.status-btns{display:flex;gap:8px;}
+.status-btn{flex:1;height:38px;border-radius:8px;border:1.5px solid #E2E5EF;background:#F5F6FA;color:#8A94A6;font-weight:600;font-size:13px;cursor:pointer;}
+.status-btn.sel-started{border-color:#1565A0;background:#E8F1FB;color:#1565A0;}
+.status-btn.sel-ongoing{border-color:#C07C2B;background:#FBF2E6;color:#C07C2B;}
+.status-btn.sel-completed{border-color:#27500A;background:#C0DD97;color:#27500A;}
+.drag-handle{color:#C0C4CC;font-size:14px;cursor:grab;padding:0 4px;}
+.info-box{font-size:12px;color:#8A94A6;background:#F5F6FA;padding:9px 11px;border-radius:7px;margin-bottom:12px;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>Strategy Tracker</h1>
+  <span class="topbar-sub">shared workspace</span>
+  <span id="sync-badge" class="sync-badge sync-loading">Connecting...</span>
+  <div class="topbar-right">
+    <button class="btn btn-navy" onclick="openNewProject()">+ New project</button>
+    <button class="btn btn-green" onclick="openNewEvent()">+ Add to calendar</button>
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="tab active" data-tab="pipeline" onclick="switchTab('pipeline')">Pipeline</button>
+  <button class="tab" data-tab="calendar" onclick="switchTab('calendar')">Calendar</button>
+  <button class="tab" data-tab="people" onclick="switchTab('people')">People</button>
+  <button class="tab" data-tab="settings" onclick="switchTab('settings')">Settings</button>
+</div>
+
+<div class="page">
+  <div id="tab-pipeline"></div>
+  <div id="tab-calendar" class="hidden"></div>
+  <div id="tab-people" class="hidden"></div>
+  <div id="tab-settings" class="hidden"></div>
+</div>
+
+<!-- NEW PROJECT MODAL -->
+<div class="modal-overlay hidden" id="modal-project">
+  <div class="modal">
+    <div class="modal-title"><span id="modal-proj-title">New Project</span><button class="modal-close" onclick="closeModal('modal-project')">&#x00D7;</button></div>
+    <div class="field"><label>Project / Brand name *</label><input class="input" id="np-name" placeholder="e.g. UNA, Hasti, Kalki..."/></div>
+    <div class="field"><label>Workflow type *</label>
+      <select class="input" id="np-wf">
+        <option value="">Select...</option>
+        <option>Brand Comm Strategy</option>
+        <option>Content Strategy</option>
+        <option>Brand Identity</option>
+        <option>Other</option>
+      </select>
+    </div>
+    <div class="field"><label>Lead</label>
+      <select class="input" id="np-lead">
+        <option value="">Assign lead...</option>
+        <option>Tanya</option><option>Shipra</option><option>Binita</option>
+      </select>
+    </div>
+    <div class="two-col">
+      <div class="field"><label>Start date *</label><input type="date" id="np-start"/></div>
+      <div class="field"><label>End date *</label><input type="date" id="np-end"/></div>
+    </div>
+    <div class="field">
+      <label>Stages <span style="font-weight:400;text-transform:none;font-size:11px;color:#8A94A6;">— drag to reorder, dates auto-calculated</span></label>
+      <div id="np-stages-list" style="max-height:260px;overflow-y:auto;margin-bottom:8px;"></div>
+      <div style="display:flex;gap:8px;">
+        <input class="input" id="np-stage-input" placeholder="Add a stage..." style="flex:1;" onkeydown="if(event.key==='Enter'){event.preventDefault();addStageToList();}"/>
+        <button class="btn-ghost" onclick="addStageToList()">Add</button>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;" id="np-stage-presets"></div>
+    </div>
+    <div id="np-err" style="color:#A32D2D;font-size:12px;margin-bottom:10px;display:none;"></div>
+    <button class="btn-primary" style="width:100%" onclick="saveNewProject()">Create project</button>
+  </div>
+</div>
+
+<!-- EDIT STAGE DATE MODAL -->
+<div class="modal-overlay hidden" id="modal-stage-date">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-title"><span>Edit stage date</span><button class="modal-close" onclick="closeModal('modal-stage-date')">&#x00D7;</button></div>
+    <div id="stage-date-info" style="font-size:13px;color:#1B2A4A;font-weight:600;margin-bottom:14px;"></div>
+    <div class="field"><label>New deadline</label><input type="date" id="stage-date-input"/></div>
+    <div id="stage-date-old" style="font-size:12px;color:#8A94A6;margin-bottom:14px;"></div>
     <div class="field"><label>Status</label>
       <div class="status-btns">
         <button class="status-btn" id="sdbtn-started" onclick="setStageDateStatus('started')">Started</button>
