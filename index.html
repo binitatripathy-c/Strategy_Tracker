@@ -628,7 +628,7 @@ function renderCalendar(){
   h.push('</select></div>');
 
   h.push('<div class="cal-wrap"><table class="cal-table"><thead><tr><th>'+(state.calView==="person"?"Person":"Type")+'</th>');
-  days.forEach(function(d,i){var today=d===todayISO();h.push('<th style="'+(today?"color:#C0DD97;":"")+'">'+(today?'<span style="background:#C0DD97;color:#1B2A4A;border-radius:10px;padding:1px 6px;">'+dayNames[i]+' '+parseInt(d.slice(8))+'</span>':dayNames[i]+' '+parseInt(d.slice(8)))+'</th>');});
+  days.forEach(function(d,i){var today=d===todayISO();var _dObj=new Date(d+"T12:00:00");var _dn=dayNames[_dObj.getDay()===0?6:_dObj.getDay()-1];h.push('<th style="'+(today?"color:#C0DD97;":"")+'">'+(today?'<span style="background:#C0DD97;color:#1B2A4A;border-radius:10px;padding:1px 6px;">'+_dn+' '+parseInt(d.slice(8))+'</span>':_dn+' '+parseInt(d.slice(8)))+'</th>');});
   h.push('</tr></thead><tbody>');
 
   var rows=state.calView==="person"?PEOPLE:Object.keys(EVENT_TYPES);
